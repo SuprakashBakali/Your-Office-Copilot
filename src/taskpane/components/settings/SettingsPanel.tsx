@@ -256,7 +256,7 @@ export const SettingsPanel: React.FC = () => {
         <div>
           <Text size={200} weight="semibold">Your Co-Pilot v1.0.0</Text>
           <br />
-          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Powered by NVIDIA NIM · React + Fluent UI</Text>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Created by Suprakash Bakali · Powered by NVIDIA NIM</Text>
         </div>
       </div>
     </div>
