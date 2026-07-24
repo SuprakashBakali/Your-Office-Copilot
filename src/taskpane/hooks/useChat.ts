@@ -282,6 +282,7 @@ Available actions:
 Rules:
 - ALWAYS emit a WORD_CMD block when the user asks you to put/type/write/insert/format data in Word.
 - You can emit multiple WORD_CMD blocks in one response.
+- When fixing or updating ANY existing elements, ONLY modify the specific parts that need changing (e.g. search_replace or format_text). Do NOT blindly recreate or rebuild everything from scratch.
 - After each block, briefly confirm what you did.` : '';
 
     const pptCommandDocs = hostApp === 'PowerPoint' ? `
@@ -299,6 +300,7 @@ Available actions:
 Rules:
 - ALWAYS emit a PPT_CMD block when the user asks you to add slides/shapes/text in PowerPoint.
 - You can emit multiple PPT_CMD blocks in one response.
+- When fixing or updating ANY existing elements, ONLY modify the specific parts that need changing (e.g. format_shape). Do NOT blindly recreate or rebuild everything from scratch.
 - After each block, briefly confirm what you did.` : '';
 
     const systemPrompt = `You are an AI Copilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${wordCommandDocs}${pptCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
