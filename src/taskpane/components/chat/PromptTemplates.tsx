@@ -29,6 +29,8 @@ const useStyles = makeStyles({
   },
   card: {
     cursor: 'pointer',
+    flexShrink: 0,
+    padding: '8px 4px',
     transition: 'all 0.2s ease',
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground1Hover,
