@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { AIProviderType, ChatMessage } from '../types';
 import { loadSettings } from '../utils/storage';
 import { getProvider } from '../services/ai/ProviderFactory';
+import { GenericOpenAIProvider } from '../services/ai/GenericOpenAIProvider';
 import { AIRequestOptions } from '../services/ai/types';
 
 export function useAI() {
@@ -22,16 +23,18 @@ export function useAI() {
       const activeCustomModel = (settings.customModels || []).find(
         m => m.id === settings.activeCustomModelId
       );
-      const providerType = activeCustomModel?.provider ?? settings.activeProvider;
-      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[providerType] || '';
+      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[settings.activeProvider] || '';
       const modelId = activeCustomModel?.modelId ?? settings.activeModel;
 
-      const provider = getProvider(providerType);
+      // Use GenericOpenAIProvider if custom baseUrl is set, else fall back to registered provider
+      const provider = activeCustomModel?.baseUrl
+        ? new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey)
+        : getProvider(activeCustomModel?.provider ?? settings.activeProvider);
 
       if (provider.requiresKey() && !apiKey) {
         throw new Error(`No API key — add one in Settings → My Models.`);
       }
-      if (apiKey) provider.setApiKey(apiKey);
+      if (apiKey && !activeCustomModel?.baseUrl) provider.setApiKey(apiKey);
 
       const requestOptions: AIRequestOptions = {
         model: modelId,
@@ -75,16 +78,18 @@ export function useAI() {
       const activeCustomModel = (settings.customModels || []).find(
         m => m.id === settings.activeCustomModelId
       );
-      const providerType = activeCustomModel?.provider ?? settings.activeProvider;
-      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[providerType] || '';
+      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[settings.activeProvider] || '';
       const modelId = activeCustomModel?.modelId ?? settings.activeModel;
 
-      const provider = getProvider(providerType);
+      // Use GenericOpenAIProvider if custom baseUrl is set, else fall back to registered provider
+      const provider = activeCustomModel?.baseUrl
+        ? new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey)
+        : getProvider(activeCustomModel?.provider ?? settings.activeProvider);
 
       if (provider.requiresKey() && !apiKey) {
         throw new Error(`No API key — add one in Settings → My Models.`);
       }
-      if (apiKey) provider.setApiKey(apiKey);
+      if (apiKey && !activeCustomModel?.baseUrl) provider.setApiKey(apiKey);
 
       const requestOptions: AIRequestOptions = {
         model: modelId,

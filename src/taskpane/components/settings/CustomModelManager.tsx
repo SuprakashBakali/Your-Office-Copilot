@@ -9,7 +9,7 @@ import {
 } from '@fluentui/react-icons';
 import { useSettings } from '../../hooks/useSettings';
 import { AIProviderType, CustomModel } from '../../types';
-import { getProvider } from '../../services/ai/ProviderFactory';
+import { GenericOpenAIProvider } from '../../services/ai/GenericOpenAIProvider';
 
 const useStyles = makeStyles({
   root: {
@@ -66,14 +66,14 @@ const useStyles = makeStyles({
   },
 });
 
-const PROVIDERS: { id: AIProviderType; label: string; color: string }[] = [
-  { id: 'nvidia',      label: 'NVIDIA NIM',   color: '#76b900' },
-  { id: 'openai',      label: 'OpenAI',        color: '#10a37f' },
-  { id: 'anthropic',   label: 'Anthropic',     color: '#d97706' },
-  { id: 'gemini',      label: 'Google Gemini', color: '#4285f4' },
-  { id: 'groq',        label: 'Groq',          color: '#f55036' },
-  { id: 'openrouter',  label: 'OpenRouter',    color: '#8b5cf6' },
-  { id: 'ollama',      label: 'Ollama (Local)', color: '#6b7280' },
+const PROVIDERS: { id: AIProviderType; label: string; color: string; baseUrl: string }[] = [
+  { id: 'nvidia',      label: 'NVIDIA NIM',    color: '#76b900', baseUrl: 'https://integrate.api.nvidia.com/v1' },
+  { id: 'openai',      label: 'OpenAI',         color: '#10a37f', baseUrl: 'https://api.openai.com/v1' },
+  { id: 'anthropic',   label: 'Anthropic',      color: '#d97706', baseUrl: 'https://api.anthropic.com/v1' },
+  { id: 'gemini',      label: 'Google Gemini',  color: '#4285f4', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' },
+  { id: 'groq',        label: 'Groq',           color: '#f55036', baseUrl: 'https://api.groq.com/openai/v1' },
+  { id: 'openrouter',  label: 'OpenRouter',     color: '#8b5cf6', baseUrl: 'https://openrouter.ai/api/v1' },
+  { id: 'ollama',      label: 'Ollama (Local)', color: '#6b7280', baseUrl: 'http://localhost:11434/v1' },
 ];
 
 function generateId() {
@@ -97,12 +97,11 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
   const update = (patch: Partial<CustomModel>) => onUpdate({ ...model, ...patch });
 
   const handleTest = async () => {
-    if (!model.apiKey || !model.modelId) return;
+    if (!model.apiKey || !model.modelId || !model.baseUrl) return;
     setTestStatus('testing');
     setTestError('');
     try {
-      const provider = getProvider(model.provider);
-      provider.setApiKey(model.apiKey);
+      const provider = new GenericOpenAIProvider(model.baseUrl, model.apiKey);
       const response = await provider.chat({
         model: model.modelId,
         messages: [{ role: 'user', content: 'Hi' }],
@@ -152,7 +151,14 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         <Text className={classes.label}>Provider</Text>
         <Dropdown
           value={PROVIDERS.find(p => p.id === model.provider)?.label || model.provider}
-          onOptionSelect={(_, d) => update({ provider: d.optionValue as AIProviderType })}
+          onOptionSelect={(_, d) => {
+            const chosen = PROVIDERS.find(p => p.id === d.optionValue);
+            update({
+              provider: d.optionValue as AIProviderType,
+              // Auto-fill base URL when provider changes
+              baseUrl: model.baseUrl || chosen?.baseUrl || '',
+            });
+          }}
           size="small"
           style={{ flex: 1 }}
         >
@@ -176,6 +182,18 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
           placeholder="e.g. meta/llama-3.1-70b-instruct"
           size="small"
           onChange={(_, d) => update({ modelId: d.value })}
+        />
+      </div>
+
+      {/* Base URL */}
+      <div className={classes.row}>
+        <Text className={classes.label}>Base URL</Text>
+        <Input
+          className={classes.flex1}
+          value={model.baseUrl || ''}
+          placeholder={PROVIDERS.find(p => p.id === model.provider)?.baseUrl || 'https://...'}
+          size="small"
+          onChange={(_, d) => update({ baseUrl: d.value })}
         />
       </div>
 
@@ -203,7 +221,7 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
             size="small"
             appearance="outline"
             onClick={handleTest}
-            disabled={testStatus === 'testing' || !model.apiKey || !model.modelId}
+            disabled={testStatus === 'testing' || !model.apiKey || !model.modelId || !model.baseUrl}
             icon={testStatus === 'testing' ? <Spinner size="extra-tiny" /> : undefined}
           >
             {testStatus === 'testing' ? '' : 'Test'}
