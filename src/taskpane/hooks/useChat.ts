@@ -222,8 +222,10 @@ Available actions:
 - Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World"}</EXCEL_CMD>
 - Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)"}</EXCEL_CMD>
 - Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]]}</EXCEL_CMD>
-- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B10","title":"My Chart"}</EXCEL_CMD>
+- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_name":"Chart1","chart_type":"column","data_range":"A1:B10","title":"My Chart"}</EXCEL_CMD>
     - Supported chart types: "column", "pie", "line", "bar", "area", "scatter"
+- Update a chart:  <EXCEL_CMD>{"action":"update_chart","chart_name":"Chart1","data_range":"A5:E107","chart_type":"line","title":"New Title"}</EXCEL_CMD>
+- Delete a chart:  <EXCEL_CMD>{"action":"delete_chart","chart_name":"Chart1"}</EXCEL_CMD>
 - Create a PivotTable: <EXCEL_CMD>{"action":"create_pivot_table","source_range":"A1:D100","target_cell":"F1","row_field":"Category","value_field":"Sales","pivot_name":"SalesSummary"}</EXCEL_CMD>
 - Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100"}</EXCEL_CMD>
 - Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"}}</EXCEL_CMD>
@@ -255,7 +257,8 @@ Available actions:
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
 - You can emit multiple EXCEL_CMD blocks in one response.
-- After each block, briefly confirm what you did (e.g. "I've written 'Hello World' to cell G4.").
+- When fixing or updating existing data, charts, or tables, ONLY emit update commands (like update_chart) for those specific elements. Do NOT rebuild or recreate them from scratch.
+- After each block, briefly confirm what you did.
 - If the cell address is ambiguous, use the most likely one based on context.
 - Never ask the user to do it manually if you can do it with an EXCEL_CMD block.` : '';
 

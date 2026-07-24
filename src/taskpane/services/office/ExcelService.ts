@@ -154,7 +154,7 @@ export class ExcelService {
             case 'write_range':
               worksheet.getRange(cmd.range).values = cmd.values;
               break;
-            case 'create_chart':
+            case 'create_chart': {
               const range = worksheet.getRange(cmd.data_range);
               let chartType = Excel.ChartType.columnClustered;
               const t = (cmd.chart_type || '').toLowerCase();
@@ -165,7 +165,36 @@ export class ExcelService {
               else if (t.includes('scatter')) chartType = Excel.ChartType.xyscatter;
               const chart = worksheet.charts.add(chartType, range, Excel.ChartSeriesBy.auto);
               chart.title.text = cmd.title;
+              if (cmd.chart_name) {
+                chart.name = cmd.chart_name;
+              }
               break;
+            }
+            case 'update_chart': {
+              const chart = worksheet.charts.getItem(cmd.chart_name);
+              if (cmd.data_range) {
+                const range = worksheet.getRange(cmd.data_range);
+                chart.setData(range, Excel.ChartSeriesBy.auto);
+              }
+              if (cmd.chart_type) {
+                const t = (cmd.chart_type || '').toLowerCase();
+                if (t.includes('pie')) chart.chartType = Excel.ChartType.pie;
+                else if (t.includes('line')) chart.chartType = Excel.ChartType.line;
+                else if (t.includes('bar')) chart.chartType = Excel.ChartType.barClustered;
+                else if (t.includes('area')) chart.chartType = Excel.ChartType.area;
+                else if (t.includes('scatter')) chart.chartType = Excel.ChartType.xyscatter;
+                else chart.chartType = Excel.ChartType.columnClustered;
+              }
+              if (cmd.title) {
+                chart.title.text = cmd.title;
+              }
+              break;
+            }
+            case 'delete_chart': {
+              const chart = worksheet.charts.getItem(cmd.chart_name);
+              chart.delete();
+              break;
+            }
             case 'clear_range':
               worksheet.getRange(cmd.range).clear();
               break;

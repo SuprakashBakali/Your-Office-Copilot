@@ -191,9 +191,9 @@ export const ChatPanel: React.FC = () => {
         </div>
         <ChatInput
           onSend={handleSend}
-          disabled={isGenerating || isStreaming}
+          disabled={isGenerating}
           onCancel={cancelStream}
-          isStreaming={isStreaming}
+          isStreaming={isGenerating}
         />
       </div>
     </div>
