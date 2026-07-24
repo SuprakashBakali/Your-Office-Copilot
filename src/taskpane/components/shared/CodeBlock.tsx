@@ -28,7 +28,7 @@ interface CodeBlockProps {
   value: string;
 }
 
-export const CodeBlock: React.FC<CodeBlockProps> = ({ language, value }) => {
+export const CodeBlock: React.FC<CodeBlockProps> = React.memo(({ language, value }) => {
   const classes = useStyles();
 
   return (
@@ -51,4 +51,4 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language, value }) => {
       </SyntaxHighlighter>
     </div>
   );
-};
+});

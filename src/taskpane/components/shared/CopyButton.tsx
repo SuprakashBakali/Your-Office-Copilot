@@ -7,7 +7,7 @@ interface CopyButtonProps {
   textToCopy?: string;
 }
 
-export const CopyButton: React.FC<CopyButtonProps> = ({ text, textToCopy }) => {
+export const CopyButton: React.FC<CopyButtonProps> = React.memo(({ text, textToCopy }) => {
   const [copied, setCopied] = useState(false);
   const content = text || textToCopy || '';
 
@@ -41,4 +41,4 @@ export const CopyButton: React.FC<CopyButtonProps> = ({ text, textToCopy }) => {
       />
     </Tooltip>
   );
-};
+});

@@ -39,7 +39,7 @@ interface MarkdownRendererProps {
   content: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content }) => {
   const classes = useStyles();
 
   return (
@@ -72,4 +72,4 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
       </ReactMarkdown>
     </div>
   );
-};
+});
