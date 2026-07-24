@@ -124,6 +124,55 @@ const TOOLS = [
     icon: <DataAreaRegular />,
     prompt: 'Identify key performance indicators (KPIs) from this data. For each KPI: state the current value, trend, benchmark comparison (if inferable), and RAG status (Red/Amber/Green). Suggest a dashboard layout with formulas.',
   },
+  {
+    id: 'goal-seek',
+    title: 'Goal Seek Advisor',
+    description: 'Find target values',
+    icon: <SearchRegular />,
+    prompt: 'Based on this data model, explain how to set up a Goal Seek analysis to achieve a specific target. Identify the "Set cell", "To value", and "By changing cell".',
+  },
+  {
+    id: 'solver',
+    title: 'Solver Assistant',
+    description: 'Optimization helper',
+    icon: <ArrowTrendingRegular />,
+    prompt: 'Help me set up an Excel Solver model for this data. Identify the objective function, decision variables, and constraints needed to optimize this scenario.',
+  },
+  {
+    id: 'monte-carlo',
+    title: 'Monte Carlo Simulation',
+    description: 'Risk analysis',
+    icon: <DataAreaRegular />,
+    prompt: 'Explain how to build a Monte Carlo simulation for this dataset. Suggest the probability distributions to use (e.g., NORM.INV, RAND) and the variables to simulate.',
+  },
+  {
+    id: 'power-pivot',
+    title: 'Power Pivot Advisor',
+    description: 'Data relationships',
+    icon: <LinkRegular />,
+    prompt: 'Analyze this data context and suggest a Power Pivot data model schema (Star or Snowflake). Define the Fact tables, Dimension tables, and primary/foreign key relationships.',
+  },
+  {
+    id: 'perf-optimizer',
+    title: 'Performance Optimizer',
+    description: 'Speed up workbook',
+    icon: <DataTrendingRegular />,
+    prompt: 'Analyze the context and suggest ways to optimize the performance of this workbook. Look for volatile functions, excessive conditional formatting, and bloated ranges.',
+  },
+  {
+    id: 'workbook-merger',
+    title: 'Workbook Merger',
+    description: 'Combine sheets',
+    icon: <DocumentBulletListRegular />,
+    prompt: 'Provide a step-by-step guide or formula strategy (like VSTACK or Power Query) to merge data structured like this across multiple sheets or workbooks.',
+  },
+  {
+    id: 'sheet-compare',
+    title: 'Sheet Comparison',
+    description: 'Find differences',
+    icon: <CheckmarkSquareRegular />,
+    prompt: 'Suggest the best Excel functions (e.g., EXACT, IF, conditional formatting) or Power Query methods to compare this dataset with another similar sheet and highlight differences.',
+  }
 ];
 
 export const DataTools: React.FC = () => {

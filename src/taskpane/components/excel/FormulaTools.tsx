@@ -3,7 +3,7 @@ import { makeStyles, tokens, Card, CardHeader, Text, Button, Textarea, Spinner, 
 import {
   CalculatorRegular, DocumentSearchRegular, WrenchRegular, ArrowSyncRegular,
   LightbulbRegular, TextGrammarWandRegular, ArrowDownRegular, TableSimpleRegular,
-  DismissRegular, CheckmarkRegular,
+  DismissRegular, CheckmarkRegular, SearchRegular, FilterRegular, CodeRegular, TableRegular, DatabaseRegular,
 } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
@@ -136,6 +136,26 @@ export const FormulaTools: React.FC = () => {
     );
   }, [runTool]);
 
+  const generateXlookup = useCallback(async () => {
+    await runTool(FORMULA_SYSTEM_PROMPT, 'I need an XLOOKUP formula based on this context. Please provide the exact XLOOKUP formula and explain its arguments.', { includeSelection: true });
+  }, [runTool]);
+
+  const generateFilterSortUnique = useCallback(async () => {
+    await runTool(FORMULA_SYSTEM_PROMPT, 'I need a formula using modern dynamic arrays like FILTER, SORT, and UNIQUE based on this context.', { includeSelection: true });
+  }, [runTool]);
+
+  const generateLetLambda = useCallback(async () => {
+    await runTool(FORMULA_SYSTEM_PROMPT, 'I need a complex formula optimized using the LET function, or a custom LAMBDA function based on this context.', { includeSelection: true });
+  }, [runTool]);
+
+  const generateDynamicArray = useCallback(async () => {
+    await runTool(FORMULA_SYSTEM_PROMPT, 'I need a dynamic array formula (spilling behavior) to solve the problem described in this context.', { includeSelection: true });
+  }, [runTool]);
+
+  const generateDax = useCallback(async () => {
+    await runTool(FORMULA_SYSTEM_PROMPT, 'Write a DAX measure or calculated column formula for this data model context.', { includeSelection: true });
+  }, [runTool]);
+
   return (
     <div className={classes.container}>
       <Text size={400} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -190,6 +210,36 @@ export const FormulaTools: React.FC = () => {
             <ArrowDownRegular /> To English
           </Text>
           <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Formula → plain language</Text>
+        </div>
+        <div className={classes.quickCard} onClick={generateXlookup}>
+          <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <SearchRegular /> XLOOKUP
+          </Text>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>XLOOKUP specialist</Text>
+        </div>
+        <div className={classes.quickCard} onClick={generateFilterSortUnique}>
+          <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <FilterRegular /> FILTER / SORT
+          </Text>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Modern array tools</Text>
+        </div>
+        <div className={classes.quickCard} onClick={generateLetLambda}>
+          <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <CodeRegular /> LET & LAMBDA
+          </Text>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Advanced functions</Text>
+        </div>
+        <div className={classes.quickCard} onClick={generateDynamicArray}>
+          <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <TableRegular /> Dynamic Arrays
+          </Text>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Spilling formulas</Text>
+        </div>
+        <div className={classes.quickCard} onClick={generateDax}>
+          <Text size={200} weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <DatabaseRegular /> DAX Writer
+          </Text>
+          <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Power Pivot DAX</Text>
         </div>
       </div>
 

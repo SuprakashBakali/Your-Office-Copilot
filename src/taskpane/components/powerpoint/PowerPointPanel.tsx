@@ -3,6 +3,7 @@ import { makeStyles, tokens, Text, Button, Badge, Spinner, Tooltip, Textarea } f
 import {
   SlideTextRegular, NoteRegular, TextBulletListLtrRegular,
   ChatHelpRegular, PersonBoardRegular, DismissRegular,
+  ColorRegular, TextFontRegular, PlayCircleRegular, ImageRegular, ShapesRegular, TimelineRegular, DocumentTextRegular, OrganizationRegular, ArrowRoutingRegular, TableRegular
 } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
@@ -105,6 +106,21 @@ const PPT_TOOLS = [
     icon: <PersonBoardRegular />,
     prompt: 'Adapt this slide content for a board/executive meeting. Focus on: strategic impact, KPIs, financial implications, risks, and recommendations. Use concise, data-driven language. Remove operational details.',
   },
+  { id: 'design-ideas', title: 'Design Advisor', desc: 'Visual improvements', icon: <ColorRegular />, prompt: 'Suggest 3 specific design improvements for this slide to make it more visually engaging. Focus on contrast, alignment, whitespace, and visual hierarchy.' },
+  { id: 'layout', title: 'Layout Optimizer', desc: 'Structure slide', icon: <SlideTextRegular />, prompt: 'Suggest the optimal slide layout for this content (e.g., Two Content, Title Only, Picture with Caption). Explain how to arrange the text and visuals for maximum impact.' },
+  { id: 'color', title: 'Color Palette', desc: 'Brand colors', icon: <ColorRegular />, prompt: 'Recommend a professional 5-color palette (with HEX codes) for this presentation. Include a primary, secondary, accent, dark text, and light background color.' },
+  { id: 'fonts', title: 'Font Advisor', desc: 'Typography', icon: <TextFontRegular />, prompt: 'Suggest a professional font pairing (heading and body) for this presentation. Explain why they work well together and suggest optimal font sizes.' },
+  { id: 'animation', title: 'Animation Guide', desc: 'Slide transitions', icon: <PlayCircleRegular />, prompt: 'Suggest professional animations and slide transitions for this content. Avoid distracting effects. Focus on guiding the viewer\'s eye (e.g., Fade, Push, Wipe).' },
+  { id: 'image', title: 'Image Ideas', desc: 'Visual metaphors', icon: <ImageRegular />, prompt: 'Suggest 3 high-quality, professional image concepts or visual metaphors that would complement this text perfectly. Describe what to search for.' },
+  { id: 'icons', title: 'Icon Matcher', desc: 'Vector graphics', icon: <ShapesRegular />, prompt: 'Suggest 5 specific, simple icons (e.g., "Target", "Lightbulb", "Gears") that map to the key concepts in this text.' },
+  { id: 'timeline', title: 'Timeline Builder', desc: 'Chronological', icon: <TimelineRegular />, prompt: 'Convert this text into a logical timeline structure for a slide. Organize it by dates/phases and summarize the milestones.' },
+  { id: 'swot-ppt', title: 'SWOT Slide', desc: 'Strengths & Weaknesses', icon: <DocumentTextRegular />, prompt: 'Format this content into a 2x2 SWOT analysis matrix (Strengths, Weaknesses, Opportunities, Threats) suitable for a slide layout.' },
+  { id: 'pestle', title: 'PESTLE Slide', desc: 'Macro environment', icon: <DocumentTextRegular />, prompt: 'Format this content into a PESTLE analysis (Political, Economic, Social, Technological, Legal, Environmental) with short, punchy bullet points.' },
+  { id: 'canvas', title: 'Business Canvas', desc: 'Business model', icon: <DocumentTextRegular />, prompt: 'Map this content to the 9 blocks of the Business Model Canvas. Keep the text extremely concise for a single slide.' },
+  { id: 'roadmap', title: 'Roadmap Creator', desc: 'Future plan', icon: <TimelineRegular />, prompt: 'Translate this strategic text into a structured roadmap (Now, Next, Later) with clear deliverables for each phase.' },
+  { id: 'orgchart', title: 'Org Chart', desc: 'Hierarchy structure', icon: <OrganizationRegular />, prompt: 'Extract the reporting structure and hierarchy from this text to help me build an Org Chart slide. List roles and who they report to.' },
+  { id: 'process', title: 'Process Flow', desc: 'Step-by-step', icon: <ArrowRoutingRegular />, prompt: 'Convert this descriptive text into a clear, sequential step-by-step process flow (Step 1, Step 2...) suitable for a flowchart diagram.' },
+  { id: 'compare', title: 'Comparison Table', desc: 'Vs analysis', icon: <TableRegular />, prompt: 'Convert this text into a clear comparison table (e.g., Option A vs Option B) highlighting the pros, cons, and key differences across standard criteria.' }
 ];
 
 export const PowerPointPanel: React.FC = () => {

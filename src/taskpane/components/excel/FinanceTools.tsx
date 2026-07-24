@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { makeStyles, tokens, Text, Button, Badge, Spinner, Tooltip } from '@fluentui/react-components';
-import { MoneyRegular, CalculatorRegular, ArrowTrendingRegular, ScalesRegular, DocumentTextRegular, DismissRegular } from '@fluentui/react-icons';
+import { MoneyRegular, CalculatorRegular, ArrowTrendingRegular, ScalesRegular, DocumentTextRegular, DismissRegular, PersonRegular, BoxRegular, BuildingBankRegular, WalletRegular, ReceiptRegular, CartRegular, BuildingRegular, WarningRegular, TimelineRegular, ClockRegular, CalendarRegular } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
 import { useExcelTools } from '../../hooks/useExcelTools';
@@ -37,6 +37,18 @@ const TOOLS = [
     prompt: 'Based on this data, suggest a financial model structure. Include: assumptions section, income statement projection, balance sheet items (if relevant), and a sensitivity/scenario analysis table. Provide all Excel formulas needed.' },
   { id: 'swot', title: 'SWOT from Data', desc: 'Data-driven SWOT analysis', icon: <DocumentTextRegular />,
     prompt: 'Perform a data-driven SWOT analysis based on the numbers in this spreadsheet. Identify: Strengths (strong metrics), Weaknesses (poor metrics), Opportunities (positive trends), Threats (negative trends). Support each point with specific data.' },
+  { id: 'payroll', title: 'Payroll Calculator', desc: 'Setup payroll formulas', icon: <PersonRegular />, prompt: 'Design a Payroll Calculator template. Provide column headers and all Excel formulas for gross pay, taxes, deductions, and net pay.' },
+  { id: 'inventory', title: 'Inventory Tracker', desc: 'Stock management', icon: <BoxRegular />, prompt: 'Design an Inventory Tracker. Provide headers and Excel formulas for reorder levels, stock value, FIFO/LIFO calculations, and low stock alerts.' },
+  { id: 'loan', title: 'Loan Calculator', desc: 'Amortization schedule', icon: <BuildingBankRegular />, prompt: 'Design a Loan Amortization Calculator. Provide the formulas (PMT, IPMT, PPMT) for calculating monthly payments, interest, principal, and remaining balance.' },
+  { id: 'portfolio', title: 'Portfolio Tracker', desc: 'Investment tracking', icon: <WalletRegular />, prompt: 'Design an Investment Portfolio Tracker. Provide the layout and formulas for calculating ROI, annualized return, asset allocation percentages, and live stock data integration (using STOCKHISTORY if applicable).' },
+  { id: 'invoice', title: 'Invoice Creator', desc: 'Invoice template', icon: <ReceiptRegular />, prompt: 'Design an automated Invoice Template. Provide the layout and formulas (VLOOKUP/XLOOKUP) for automatically pulling customer details, calculating line item totals, subtotal, tax, and grand total.' },
+  { id: 'procurement', title: 'Procurement Tracker', desc: 'Vendor & PO tracking', icon: <CartRegular />, prompt: 'Design a Procurement and PO Tracker. Provide the layout and formulas for tracking purchase orders, vendor performance, budget vs actual spend, and delivery times.' },
+  { id: 'fixed_asset', title: 'Fixed Asset Register', desc: 'Depreciation tracking', icon: <BuildingRegular />, prompt: 'Design a Fixed Asset Register. Provide the layout and formulas for calculating straight-line (SLN), declining balance (DB), and sum-of-years digits (SYD) depreciation.' },
+  { id: 'risk_map', title: 'Risk Heat Map', desc: 'Risk matrix generator', icon: <WarningRegular />, prompt: 'Design a Risk Heat Map. Provide the layout for plotting likelihood vs impact, and the formulas/conditional formatting rules to color code the risk levels (Low, Medium, High, Critical).' },
+  { id: 'gantt', title: 'Gantt Chart Builder', desc: 'Project timelines', icon: <TimelineRegular />, prompt: 'Design a Gantt Chart project tracker. Provide the columns (Task, Start, End, Duration, Progress) and the exact conditional formatting formulas to draw the Gantt bars automatically.' },
+  { id: 'attendance', title: 'Attendance Tracker', desc: 'Employee attendance', icon: <PersonRegular />, prompt: 'Design an Employee Attendance Tracker. Provide the layout and formulas to calculate total present days, absent days, leave balance, and conditional formatting for weekends/holidays.' },
+  { id: 'timesheet', title: 'Timesheet Builder', desc: 'Hours & overtime', icon: <ClockRegular />, prompt: 'Design an Employee Timesheet. Provide formulas to calculate regular hours, overtime hours (e.g. over 8 hours/day or 40 hours/week), and total pay.' },
+  { id: 'calendar', title: 'Calendar Generator', desc: 'Dynamic calendar', icon: <CalendarRegular />, prompt: 'Design a dynamic monthly Calendar. Provide the exact array formulas (using SEQUENCE, DATE, WEEKDAY) to generate a full month grid that updates automatically when the month/year changes.' }
 ];
 
 export const FinanceTools: React.FC = () => {

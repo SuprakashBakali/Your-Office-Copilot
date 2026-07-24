@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { makeStyles, tokens, Text, Button, Badge, Spinner, Tooltip } from '@fluentui/react-components';
-import { BroomRegular, CalendarRegular, TextSortAscendingRegular, CutRegular, SparkleRegular, DismissRegular, TextCaseTitleRegular } from '@fluentui/react-icons';
+import { BroomRegular, CalendarRegular, TextSortAscendingRegular, CutRegular, SparkleRegular, DismissRegular, TextCaseTitleRegular, DocumentArrowRightRegular, CodeRegular, TableRegular, LinkDismissRegular, ArrowSyncCircleRegular, ShareRegular } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
 import { useExcelTools } from '../../hooks/useExcelTools';
@@ -33,6 +33,18 @@ const TOOLS = [
     prompt: 'Normalize text data: fix case (PROPER, UPPER, LOWER as appropriate), trim whitespace (TRIM, CLEAN), remove non-printable characters, standardize abbreviations, fix encoding issues. Provide formulas for each fix.' },
   { id: 'inconsistent', title: 'Detect Inconsistencies', desc: 'Find conflicting values', icon: <TextSortAscendingRegular />,
     prompt: 'Detect inconsistent values: different spellings of the same thing (e.g., "USA" vs "United States" vs "US"), mixed units, inconsistent categories, and outlier text patterns. Suggest a standardization mapping and formulas (SWITCH, SUBSTITUTE, IFS) to harmonize the data.' },
+  { id: 'xml-csv', title: 'XML/CSV Importer', desc: 'Parse raw data', icon: <DocumentArrowRightRegular />,
+    prompt: 'Provide a step-by-step guide and Power Query M code to import, clean, and structure the raw XML/CSV data described into a clean Excel table.' },
+  { id: 'json-table', title: 'JSON to Table', desc: 'Convert JSON data', icon: <CodeRegular />,
+    prompt: 'Provide a step-by-step guide and Power Query M code to parse the given JSON structure into a flat, normalized Excel table.' },
+  { id: 'table-norm', title: 'Table Normalization', desc: 'Database style tables', icon: <TableRegular />,
+    prompt: 'Analyze this data and suggest how to normalize it into 1st, 2nd, or 3rd Normal Form (1NF/2NF/3NF). Identify primary keys and split the flat table into relational tables if needed.' },
+  { id: 'broken-link', title: 'Broken Link Finder', desc: 'Find bad external links', icon: <LinkDismissRegular />,
+    prompt: 'Explain how to find, audit, and safely remove or fix broken external links (#REF!) in this workbook using Excel built-in tools or VBA.' },
+  { id: 'circular-ref', title: 'Circular Reference', desc: 'Detect loop formulas', icon: <ArrowSyncCircleRegular />,
+    prompt: 'Provide instructions on how to find, trace, and resolve circular references in this workbook. Suggest how to rewrite the formula to avoid the loop.' },
+  { id: 'dependency-map', title: 'Dependency Mapper', desc: 'Trace formula tree', icon: <ShareRegular />,
+    prompt: 'Explain how to trace precedents and dependents for the selected formulas to understand the data flow and find bottlenecks.' },
 ];
 
 export const CleaningTools: React.FC = () => {
