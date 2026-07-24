@@ -282,6 +282,12 @@ npm start
 
 ---
 
+## 🙏 Acknowledgments
+
+A special thanks to **[@hewliyang](https://github.com/hewliyang)** and their [office-agents](https://github.com/hewliyang/office-agents) repository. Their innovative implementation of Secure ECMAScript (SES) sandboxing heavily inspired the dynamic `evaluate_office_js` tool in this copilot, enabling secure, on-the-fly execution of arbitrary Office.js scripts!
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

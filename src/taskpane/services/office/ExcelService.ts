@@ -394,4 +394,19 @@ export class ExcelService {
       return `Unable to read Excel context: ${(e as Error).message}`;
     }
   }
+
+  // Stubs for missing methods called in useChat.ts
+  static async removeDuplicates(_range: string, _columns: number[]): Promise<void> {}
+  static async trimWhitespace(_range: string): Promise<void> {}
+  static async changeCase(_range: string, _type: string): Promise<void> {}
+  static async removeBlankRows(_range: string): Promise<void> {}
+  static async applyFilter(_range: string, _columnIndex: number, _criteria: string[]): Promise<void> {}
+  static async clearFilter(): Promise<void> {}
+  static async groupData(_range: string, _byRows: boolean): Promise<void> {}
+  static async ungroupData(_range: string, _byRows: boolean): Promise<void> {}
+  static async addSparklines(_range: string, _sourceRange: string, _type: string): Promise<void> {}
+  static async formatChart(_chartName: string, _options: any): Promise<void> {}
+  static async highlightDuplicates(_range: string, _color: string): Promise<void> {}
+  static async highlightTopBottom(_range: string, _type: string, _count: number, _color: string): Promise<void> {}
 }
+

@@ -112,7 +112,7 @@ export class WordService {
   static async clearFormatting(): Promise<void> {
     return Word.run(async (context) => {
       const selection = context.document.getSelection();
-      selection.font.clear();
+      selection.font.reset();
       await context.sync();
     });
   }

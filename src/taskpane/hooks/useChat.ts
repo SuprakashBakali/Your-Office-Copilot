@@ -133,6 +133,13 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.highlightTopBottom(cmd.range, cmd.type, cmd.count, cmd.color);
           results.executed++;
           break;
+        case 'evaluate_office_js':
+          const { sandboxedEval } = await import('../utils/sandbox');
+          await Excel.run(async (context) => {
+            await sandboxedEval(cmd.code, { context, Excel });
+          });
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown action: ${cmd.action}`);
       }
@@ -327,6 +334,7 @@ Available actions:
 - Format Chart:    <EXCEL_CMD>{"action":"format_chart","chart_name":"Chart1","options":{"title":"Sales","showDataLabels":true,"legendPosition":"bottom"}}</EXCEL_CMD>
 - HL Duplicates:   <EXCEL_CMD>{"action":"highlight_duplicates","range":"A1:A100","color":"pink"}</EXCEL_CMD>
 - HL Top/Bottom:   <EXCEL_CMD>{"action":"highlight_top_bottom","range":"B1:B100","type":"top","count":10,"color":"lightgreen"}</EXCEL_CMD>
+- Evaluate Code:   <EXCEL_CMD>{"action":"evaluate_office_js","code":"const sheet = context.workbook.worksheets.getActiveWorksheet(); sheet.getRange('A1').values = [['Hello']]; await context.sync();"}</EXCEL_CMD>
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
