@@ -6,10 +6,12 @@ import {
 import {
   AddRegular, DeleteRegular, CheckmarkCircleRegular,
   ErrorCircleRegular, EyeRegular, EyeOffRegular, RadioButtonRegular, RecordRegular,
+  PlayRegular, TimerRegular, TrophyRegular,
 } from '@fluentui/react-icons';
 import { useSettings } from '../../hooks/useSettings';
 import { AIProviderType, CustomModel } from '../../types';
 import { GenericOpenAIProvider } from '../../services/ai/GenericOpenAIProvider';
+import { getProvider } from '../../services/ai/ProviderFactory';
 
 const useStyles = makeStyles({
   root: {
@@ -64,8 +66,26 @@ const useStyles = makeStyles({
     border: `1px dashed ${tokens.colorNeutralStroke2}`,
     borderRadius: '10px',
   },
+  leaderboard: {
+    marginTop: '16px',
+    padding: '16px',
+    borderRadius: '10px',
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke1}`,
+  },
+  leaderboardRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    '&:last-child': { borderBottom: 'none' },
+  },
+  leaderboardRank: {
+    width: '24px',
+    fontWeight: 'bold',
+    color: tokens.colorBrandForeground1,
+  },
 });
-
 const PROVIDERS: { id: AIProviderType; label: string; color: string; baseUrl: string }[] = [
   { id: 'nvidia',      label: 'NVIDIA NIM',    color: '#76b900', baseUrl: 'https://integrate.api.nvidia.com/v1' },
   { id: 'openai',      label: 'OpenAI',         color: '#10a37f', baseUrl: 'https://api.openai.com/v1' },
@@ -249,6 +269,8 @@ export const CustomModelManager: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const models = settings.customModels || [];
   const activeId = settings.activeCustomModelId || '';
+  const [testRankings, setTestRankings] = useState<{ id: string, name: string, latency: number, status: 'ok'|'error', error?: string }[]>([]);
+  const [isTestingAll, setIsTestingAll] = useState(false);
 
   const saveModels = (updated: CustomModel[]) => updateSettings({ customModels: updated });
 
@@ -291,13 +313,49 @@ export const CustomModelManager: React.FC = () => {
     }
   };
 
+  const handleTestAll = async () => {
+    setIsTestingAll(true);
+    setTestRankings([]);
+    
+    const results = await Promise.all(models.map(async (model) => {
+      if (!model.apiKey || !model.modelId) {
+        return { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: 'Missing API Key or Model ID' };
+      }
+      const start = performance.now();
+      try {
+        const provider = model.baseUrl ? new GenericOpenAIProvider(model.baseUrl, model.apiKey) : getProvider(model.provider);
+        if (!model.baseUrl) provider.setApiKey(model.apiKey);
+        
+        await provider.chat({
+          model: model.modelId,
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 5,
+          stream: false,
+        });
+        const end = performance.now();
+        return { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
+      } catch (e) {
+        const end = performance.now();
+        return { id: model.id, name: model.name, latency: Math.round(end - start), status: 'error' as const, error: (e as Error).message };
+      }
+    }));
+    
+    setTestRankings(results.sort((a, b) => a.latency - b.latency));
+    setIsTestingAll(false);
+  };
+
   return (
     <div className={classes.root}>
       <div className={classes.header}>
         <Text weight="semibold">My Models ({models.length})</Text>
-        <Button icon={<AddRegular />} size="small" appearance="primary" onClick={addModel}>
-          Add Model
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button icon={isTestingAll ? <Spinner size="extra-tiny" /> : <PlayRegular />} size="small" appearance="secondary" onClick={handleTestAll} disabled={isTestingAll || models.length === 0}>
+            {isTestingAll ? 'Testing...' : 'Test All'}
+          </Button>
+          <Button icon={<AddRegular />} size="small" appearance="primary" onClick={addModel}>
+            Add Model
+          </Button>
+        </div>
       </div>
 
       {models.length === 0 ? (
@@ -315,6 +373,33 @@ export const CustomModelManager: React.FC = () => {
             onDelete={() => deleteModel(model.id)}
           />
         ))
+      )}
+
+      {testRankings.length > 0 && (
+        <div className={classes.leaderboard}>
+          <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <TrophyRegular style={{ color: '#d97706' }}/> API Latency Leaderboard
+          </Text>
+          {testRankings.map((r, i) => (
+            <div key={r.id} className={classes.leaderboardRow}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Text className={classes.leaderboardRank}>#{i + 1}</Text>
+                <Text>{r.name}</Text>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {r.status === 'ok' ? (
+                  <Text style={{ color: tokens.colorPaletteGreenForeground1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <TimerRegular /> {r.latency}ms
+                  </Text>
+                ) : (
+                  <Text style={{ color: tokens.colorPaletteRedForeground1, fontSize: '11px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    Error: {r.error}
+                  </Text>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
