@@ -1,3 +1,6 @@
 {
-  "outputDirectory": "dist"
+  "outputDirectory": "public",
+  "routes": [
+    { "src": "^/$", "dest": "/taskpane.html" }
+  ]
 }
