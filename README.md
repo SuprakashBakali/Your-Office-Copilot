@@ -100,11 +100,11 @@ This is the easiest way. Vercel gives you a free `https://` URL that Office requ
 
 ```bash
 # 1. Fork/clone this repo
-git clone https://github.com/YOUR_USERNAME/office-ai-copilot.git
-cd office-ai-copilot
+git clone https://github.com/YOUR_USERNAME/Your-Office-Copilot.git
+cd Your-Office-Copilot
 
 # 2. Push to your GitHub
-git remote set-url origin https://github.com/YOUR_USERNAME/office-ai-copilot.git
+git remote set-url origin https://github.com/YOUR_USERNAME/Your-Office-Copilot.git
 git push -u origin main
 ```
 
@@ -118,8 +118,8 @@ Then:
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/office-ai-copilot.git
-cd office-ai-copilot
+git clone https://github.com/YOUR_USERNAME/Your-Office-Copilot.git
+cd Your-Office-Copilot
 
 # 2. Install dependencies
 npm install
@@ -274,8 +274,8 @@ Contributions are welcome! Here's how:
 ### Development Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/office-ai-copilot.git
-cd office-ai-copilot
+git clone https://github.com/YOUR_USERNAME/Your-Office-Copilot.git
+cd Your-Office-Copilot
 npm install
 npm start
 ```
