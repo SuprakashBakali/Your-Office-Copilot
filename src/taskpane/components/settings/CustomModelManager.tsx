@@ -31,10 +31,10 @@ const useStyles = makeStyles({
     gap: '8px',
     backgroundColor: tokens.colorNeutralBackground1,
     transition: 'border-color 0.2s',
-    ':hover': { borderColor: tokens.colorNeutralStroke1 },
+    '&:hover': { border: `1px solid ${tokens.colorNeutralStroke1}` },
   },
   activeCard: {
-    borderColor: tokens.colorBrandStroke1,
+    border: `1px solid ${tokens.colorBrandStroke1}`,
     backgroundColor: tokens.colorBrandBackground2,
   },
   row: {
@@ -163,7 +163,7 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
           style={{ flex: 1 }}
         >
           {PROVIDERS.map(p => (
-            <Option key={p.id} value={p.id}>
+            <Option key={p.id} value={p.id} text={p.label}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: p.color, display: 'inline-block' }} />
                 {p.label}

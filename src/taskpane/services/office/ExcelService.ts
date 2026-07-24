@@ -225,9 +225,7 @@ export class ExcelService {
       if (opts.horizontalAlignment) range.format.horizontalAlignment = opts.horizontalAlignment as any;
       if (opts.verticalAlignment) range.format.verticalAlignment = opts.verticalAlignment as any;
       if (opts.numberFormat) {
-        // Apply number format to all cells in range by making a 2D array matching range dimensions, or Office JS accepts a string?
-        // Wait, range.numberFormat accepts a string or 2D array. A string applies to all.
-        range.numberFormat = opts.numberFormat;
+        range.numberFormat = [[opts.numberFormat]];
       }
       await context.sync();
     });

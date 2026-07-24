@@ -55,7 +55,7 @@ export const ModelSelector: React.FC = () => {
         size="small"
       >
         {models.map(m => (
-          <Option key={m.id} value={m.id}>
+          <Option key={m.id} value={m.id} text={m.name}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{
                 width: 6, height: 6, borderRadius: '50%',
