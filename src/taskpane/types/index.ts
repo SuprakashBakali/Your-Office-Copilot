@@ -34,6 +34,16 @@ export interface AIModel {
   maxTokens?: number;
 }
 
+/** A user-defined model entry with its own key and provider */
+export interface CustomModel {
+  id: string;           // unique UUID
+  name: string;         // user-friendly display name
+  modelId: string;      // actual API model ID (e.g. "meta/llama-3.1-70b-instruct")
+  provider: AIProviderType;
+  apiKey: string;       // API key stored per model
+  baseUrl?: string;     // optional override (for Ollama/OpenRouter)
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -170,6 +180,8 @@ export interface AppSettings {
   // AI Configuration
   activeProvider: AIProviderType;
   activeModel: string;
+  activeCustomModelId: string;   // UUID of the active CustomModel
+  customModels: CustomModel[];   // user-defined models
   apiKeys: Partial<Record<AIProviderType, string>>;
 
   // UI Preferences

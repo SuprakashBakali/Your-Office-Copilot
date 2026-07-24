@@ -46,6 +46,8 @@ function removeItem(key: string): void {
 export const DEFAULT_SETTINGS: AppSettings = {
   activeProvider: "nvidia",
   activeModel: "meta/llama-3.1-70b-instruct",
+  activeCustomModelId: "",
+  customModels: [],
   apiKeys: {},
   theme: "auto",
   fontSize: "medium",

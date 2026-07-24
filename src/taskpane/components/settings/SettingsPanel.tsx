@@ -7,9 +7,7 @@ import {
 import { DeleteRegular, ArrowExportRegular, ArrowResetRegular, InfoRegular } from '@fluentui/react-icons';
 import { useSettings } from '../../hooks/useSettings';
 import { useTheme } from '../../hooks/useTheme';
-import { ApiKeyManager } from './ApiKeyManager';
-import { ModelSelector } from './ModelSelector';
-import { PROVIDER_CONFIGS, getProvider } from '../../services/ai/ProviderFactory';
+import { CustomModelManager } from './CustomModelManager';
 import { useAppDispatch } from '../../store/AppContext';
 import { clearAllData } from '../../utils/storage';
 
@@ -93,47 +91,14 @@ export const SettingsPanel: React.FC = () => {
 
       <Accordion multiple defaultOpenItems={['ai', 'keys', 'appearance', 'privacy', 'chat']}>
 
-        {/* AI Configuration */}
+        {/* My Models */}
         <AccordionItem value="ai">
-          <AccordionHeader>🤖 AI Configuration</AccordionHeader>
-          <AccordionPanel className={classes.section}>
-            <div className={classes.field}>
-              <div className={classes.fieldLabel}>
-                <Text weight="semibold">Provider</Text>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Select AI backend</Text>
-              </div>
-              <Dropdown
-                value={PROVIDER_CONFIGS[settings.activeProvider]?.name || settings.activeProvider}
-                onOptionSelect={(_, data) => {
-                  const newProvider = data.optionValue as string;
-                  const provider = getProvider(newProvider);
-                  const models = provider.getModels();
-                  const defaultModel = models.length > 0 ? models[0].id : '';
-                  updateSettings({ activeProvider: newProvider as any, activeModel: defaultModel });
-                }}
-                size="small"
-              >
-                {Object.entries(PROVIDER_CONFIGS).map(([id, config]) => (
-                  <Option key={id} value={id} text={config.name}>
-                    {config.name}
-                  </Option>
-                ))}
-              </Dropdown>
-            </div>
-            <ModelSelector />
-          </AccordionPanel>
-        </AccordionItem>
-
-        {/* API Keys */}
-        <AccordionItem value="keys">
-          <AccordionHeader>🔑 API Keys</AccordionHeader>
+          <AccordionHeader>🤖 My Models</AccordionHeader>
           <AccordionPanel className={classes.section}>
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              Keys are stored locally in your browser. They are never sent to external servers beyond the AI provider.
+              Add models with their own provider and API key. Each model can use a different provider.
             </Text>
-            {Object.keys(PROVIDER_CONFIGS).map(provider => (
-              <ApiKeyManager key={provider} provider={provider} />
-            ))}
+            <CustomModelManager />
           </AccordionPanel>
         </AccordionItem>
 

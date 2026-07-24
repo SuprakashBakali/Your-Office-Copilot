@@ -1,107 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { makeStyles, tokens, Dropdown, Option, Text, Input } from '@fluentui/react-components';
+import React from 'react';
+import { makeStyles, tokens, Dropdown, Option, Text, Badge } from '@fluentui/react-components';
 import { useSettings } from '../../hooks/useSettings';
-import { getProvider } from '../../services/ai/ProviderFactory';
 
 const useStyles = makeStyles({
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
   row: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: '12px',
   },
-  customInput: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  hint: {
+  none: {
     color: tokens.colorNeutralForeground3,
-    fontSize: '11px',
+    fontSize: tokens.fontSizeBase100,
+    fontStyle: 'italic',
   },
 });
+
+const PROVIDER_COLORS: Record<string, string> = {
+  nvidia: '#76b900', openai: '#10a37f', anthropic: '#d97706',
+  gemini: '#4285f4', groq: '#f55036', openrouter: '#8b5cf6', ollama: '#6b7280',
+};
 
 export const ModelSelector: React.FC = () => {
   const classes = useStyles();
   const { settings, updateSettings } = useSettings();
-  const [customModelId, setCustomModelId] = useState('');
-  const [isCustom, setIsCustom] = useState(false);
+  const models = settings.customModels || [];
+  const activeId = settings.activeCustomModelId || '';
+  const activeModel = models.find(m => m.id === activeId);
 
-  let models: Array<{ id: string; name: string }> = [];
-  try {
-    const provider = getProvider(settings.activeProvider);
-    models = provider.getModels();
-  } catch {
-    models = [];
-  }
-
-  // Detect if current model is custom (not in preset list)
-  useEffect(() => {
-    const presetIds = models.filter(m => m.id !== '__custom__').map(m => m.id);
-    if (settings.activeModel && !presetIds.includes(settings.activeModel)) {
-      setIsCustom(true);
-      setCustomModelId(settings.activeModel);
-    } else {
-      setIsCustom(false);
-    }
-  }, [settings.activeProvider, settings.activeModel]);
-
-  const handleSelect = (_: unknown, data: { optionValue?: string }) => {
-    if (data.optionValue === '__custom__') {
-      setIsCustom(true);
-      setCustomModelId('');
-    } else {
-      setIsCustom(false);
-      updateSettings({ activeModel: data.optionValue as string });
-    }
-  };
-
-  const handleCustomSubmit = () => {
-    const trimmed = customModelId.trim();
-    if (trimmed) {
-      updateSettings({ activeModel: trimmed });
-    }
-  };
-
-  const displayValue = isCustom
-    ? '✏️ Custom Model ID...'
-    : models.find(m => m.id === settings.activeModel)?.name || settings.activeModel;
-
-  return (
-    <div className={classes.container}>
+  if (models.length === 0) {
+    return (
       <div className={classes.row}>
         <Text>Model</Text>
-        <Dropdown
-          value={displayValue}
-          onOptionSelect={handleSelect}
-          size="small"
-        >
-          {models.map((model) => (
-            <Option key={model.id} value={model.id}>{model.name}</Option>
-          ))}
-        </Dropdown>
+        <Text className={classes.none}>No models — add one in Settings ↓</Text>
       </div>
+    );
+  }
 
-      {isCustom && (
-        <div className={classes.customInput}>
-          <Input
-            placeholder="e.g. meta/llama-3.1-70b-instruct"
-            value={customModelId}
-            size="small"
-            onChange={(_, data) => setCustomModelId(data.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCustomSubmit(); }}
-            onBlur={handleCustomSubmit}
-          />
-          <Text className={classes.hint}>
-            Enter the exact model ID from NVIDIA NIM catalog. Press Enter to apply.
-          </Text>
-        </div>
-      )}
+  return (
+    <div className={classes.row}>
+      <Text>Model</Text>
+      <Dropdown
+        value={activeModel?.name || 'Select a model'}
+        onOptionSelect={(_, d) => {
+          const chosen = models.find(m => m.id === d.optionValue);
+          if (chosen) {
+            updateSettings({
+              activeCustomModelId: chosen.id,
+              activeProvider: chosen.provider,
+              activeModel: chosen.modelId,
+            });
+          }
+        }}
+        size="small"
+      >
+        {models.map(m => (
+          <Option key={m.id} value={m.id}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                backgroundColor: PROVIDER_COLORS[m.provider] || '#888',
+                display: 'inline-block', flexShrink: 0,
+              }} />
+              {m.name}
+            </span>
+          </Option>
+        ))}
+      </Dropdown>
     </div>
   );
 };

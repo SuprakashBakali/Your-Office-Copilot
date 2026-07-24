@@ -17,19 +17,24 @@ export function useAI() {
       setError(null);
 
       const settings = loadSettings();
-      const provider = getProvider(settings.activeProvider);
-      const apiKey = settings.apiKeys[settings.activeProvider];
+
+      // Resolve provider + key from the active custom model (if any)
+      const activeCustomModel = (settings.customModels || []).find(
+        m => m.id === settings.activeCustomModelId
+      );
+      const providerType = activeCustomModel?.provider ?? settings.activeProvider;
+      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[providerType] || '';
+      const modelId = activeCustomModel?.modelId ?? settings.activeModel;
+
+      const provider = getProvider(providerType);
 
       if (provider.requiresKey() && !apiKey) {
-        throw new Error(`API key not configured for ${settings.activeProvider}. Go to Settings → API Keys.`);
+        throw new Error(`No API key — add one in Settings → My Models.`);
       }
-
-      if (apiKey) {
-        provider.setApiKey(apiKey);
-      }
+      if (apiKey) provider.setApiKey(apiKey);
 
       const requestOptions: AIRequestOptions = {
-        model: settings.activeModel,
+        model: modelId,
         messages: messages.map(m => ({
           role: m.role as 'system' | 'user' | 'assistant',
           content: m.content,
@@ -65,19 +70,24 @@ export function useAI() {
       abortControllerRef.current = new AbortController();
 
       const settings = loadSettings();
-      const provider = getProvider(settings.activeProvider);
-      const apiKey = settings.apiKeys[settings.activeProvider];
+
+      // Resolve provider + key from the active custom model (if any)
+      const activeCustomModel = (settings.customModels || []).find(
+        m => m.id === settings.activeCustomModelId
+      );
+      const providerType = activeCustomModel?.provider ?? settings.activeProvider;
+      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[providerType] || '';
+      const modelId = activeCustomModel?.modelId ?? settings.activeModel;
+
+      const provider = getProvider(providerType);
 
       if (provider.requiresKey() && !apiKey) {
-        throw new Error(`API key not configured for ${settings.activeProvider}. Go to Settings → API Keys.`);
+        throw new Error(`No API key — add one in Settings → My Models.`);
       }
-
-      if (apiKey) {
-        provider.setApiKey(apiKey);
-      }
+      if (apiKey) provider.setApiKey(apiKey);
 
       const requestOptions: AIRequestOptions = {
-        model: settings.activeModel,
+        model: modelId,
         messages: messages.map(m => ({
           role: m.role as 'system' | 'user' | 'assistant',
           content: m.content,
