@@ -2,7 +2,7 @@
   <img src="assets/icon.jpg" alt="Office AI Copilot" width="128" height="128" style="border-radius: 24px;" />
 </p>
 
-<h1 align="center">Your Co-Pilot (Office Add-in)</h1>
+<h1 align="center">Your-Office-CoPilot (Office Add-in)</h1>
 
 <p align="center">
   <strong>Your custom AI-powered Office Add-in for Excel, Word & PowerPoint — powered by 7 AI providers</strong>
