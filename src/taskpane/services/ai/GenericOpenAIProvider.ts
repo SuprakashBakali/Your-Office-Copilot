@@ -24,14 +24,18 @@ export class GenericOpenAIProvider extends BaseAIProvider {
 
   async chat(options: AIRequestOptions): Promise<AIResponse> {
     const targetUrl = `${this._baseUrl}/chat/completions`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.apiKey}`,
+    };
+    if (this._baseUrl.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://github.com/SuprakashBakali/office-ai-copilot';
+      headers['X-Title'] = 'Office AI Copilot';
+    }
+
     const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'HTTP-Referer': 'https://github.com/SuprakashBakali/office-ai-copilot',
-        'X-Title': 'Office AI Copilot',
-      },
+      headers,
       body: JSON.stringify({
         model: options.model,
         messages: options.messages,
@@ -62,15 +66,19 @@ export class GenericOpenAIProvider extends BaseAIProvider {
 
   async *chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk> {
     const targetUrl = `${this._baseUrl}/chat/completions`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Accept': 'text/event-stream',
+    };
+    if (this._baseUrl.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://github.com/SuprakashBakali/office-ai-copilot';
+      headers['X-Title'] = 'Office AI Copilot';
+    }
+
     const response = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Accept': 'text/event-stream',
-        'HTTP-Referer': 'https://github.com/SuprakashBakali/office-ai-copilot',
-        'X-Title': 'Office AI Copilot',
-      },
+      headers,
       body: JSON.stringify({
         model: options.model,
         messages: options.messages,
