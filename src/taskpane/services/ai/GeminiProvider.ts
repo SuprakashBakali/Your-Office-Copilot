@@ -9,8 +9,9 @@ export class GeminiProvider extends BaseAIProvider {
 
   getModels() {
     return [
+      { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash' },
+      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro' },
       { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
-      { id: 'gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash' },
       { id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro' }
     ];
   }
