@@ -138,148 +138,6 @@ export class ExcelService {
     });
   }
 
-  static async executeBatch(commands: any[]): Promise<void> {
-    return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
-      
-      for (const cmd of commands) {
-        try {
-          switch (cmd.action) {
-            case 'write_cell':
-              worksheet.getRange(cmd.cell).values = [[cmd.value]];
-              break;
-            case 'write_formula':
-              worksheet.getRange(cmd.cell).formulas = [[cmd.formula]];
-              break;
-            case 'write_range':
-              worksheet.getRange(cmd.range).values = cmd.values;
-              break;
-            case 'create_chart': {
-              const range = worksheet.getRange(cmd.data_range);
-              let chartType = Excel.ChartType.columnClustered;
-              const t = (cmd.chart_type || '').toLowerCase();
-              if (t.includes('pie')) chartType = Excel.ChartType.pie;
-              else if (t.includes('line')) chartType = Excel.ChartType.line;
-              else if (t.includes('bar')) chartType = Excel.ChartType.barClustered;
-              else if (t.includes('area')) chartType = Excel.ChartType.area;
-              else if (t.includes('scatter')) chartType = Excel.ChartType.xyscatter;
-              const chart = worksheet.charts.add(chartType, range, Excel.ChartSeriesBy.auto);
-              chart.title.text = cmd.title;
-              if (cmd.chart_name) {
-                chart.name = cmd.chart_name;
-              }
-              break;
-            }
-            case 'update_chart': {
-              const chart = worksheet.charts.getItem(cmd.chart_name);
-              if (cmd.data_range) {
-                const range = worksheet.getRange(cmd.data_range);
-                chart.setData(range, Excel.ChartSeriesBy.auto);
-              }
-              if (cmd.chart_type) {
-                const t = (cmd.chart_type || '').toLowerCase();
-                if (t.includes('pie')) chart.chartType = Excel.ChartType.pie;
-                else if (t.includes('line')) chart.chartType = Excel.ChartType.line;
-                else if (t.includes('bar')) chart.chartType = Excel.ChartType.barClustered;
-                else if (t.includes('area')) chart.chartType = Excel.ChartType.area;
-                else if (t.includes('scatter')) chart.chartType = Excel.ChartType.xyscatter;
-                else chart.chartType = Excel.ChartType.columnClustered;
-              }
-              if (cmd.title) {
-                chart.title.text = cmd.title;
-              }
-              break;
-            }
-            case 'delete_chart': {
-              const chart = worksheet.charts.getItem(cmd.chart_name);
-              chart.delete();
-              break;
-            }
-            case 'clear_range':
-              worksheet.getRange(cmd.range).clear();
-              break;
-            case 'format_range':
-              const fmtRange = worksheet.getRange(cmd.range);
-              const opts = cmd.options || {};
-              if (opts.bold !== undefined) fmtRange.format.font.bold = opts.bold;
-              if (opts.italic !== undefined) fmtRange.format.font.italic = opts.italic;
-              if (opts.backgroundColor) fmtRange.format.fill.color = opts.backgroundColor;
-              if (opts.fontColor) fmtRange.format.font.color = opts.fontColor;
-              if (opts.fontSize) fmtRange.format.font.size = opts.fontSize;
-              if (opts.wrapText !== undefined) fmtRange.format.wrapText = opts.wrapText;
-              if (opts.horizontalAlignment) fmtRange.format.horizontalAlignment = opts.horizontalAlignment as any;
-              if (opts.verticalAlignment) fmtRange.format.verticalAlignment = opts.verticalAlignment as any;
-              if (opts.numberFormat) fmtRange.numberFormat = [[opts.numberFormat]];
-              break;
-            case 'add_sheet':
-              context.workbook.worksheets.add(cmd.name);
-              break;
-            case 'delete_sheet':
-              context.workbook.worksheets.getItem(cmd.name).delete();
-              break;
-            case 'insert_range':
-              worksheet.getRange(cmd.range).insert(
-                cmd.shift_direction === 'Down' ? Excel.InsertShiftDirection.down : Excel.InsertShiftDirection.right
-              );
-              break;
-            case 'delete_range':
-              worksheet.getRange(cmd.range).delete(
-                cmd.shift_direction === 'Up' ? Excel.DeleteShiftDirection.up : Excel.DeleteShiftDirection.left
-              );
-              break;
-            case 'merge_cells':
-              worksheet.getRange(cmd.range).merge(cmd.merge_across);
-              break;
-            case 'create_table':
-              const tableRange = worksheet.getRange(cmd.range);
-              const table = worksheet.tables.add(tableRange, cmd.has_headers);
-              if (cmd.name) table.name = cmd.name;
-              break;
-            case 'delete_table': {
-              const table = worksheet.tables.getItem(cmd.name);
-              table.delete();
-              break;
-            }
-            case 'sort_range':
-              worksheet.getRange(cmd.range).sort.apply([{ key: cmd.column_index, ascending: cmd.ascending }]);
-              break;
-            case 'find_replace':
-              worksheet.getRange(cmd.range).replaceAll(cmd.find_text, cmd.replace_text, { completeMatch: false, matchCase: false });
-              break;
-            case 'clear_data_validation':
-              worksheet.getRange(cmd.range).dataValidation.clear();
-              break;
-            case 'add_data_validation':
-              worksheet.getRange(cmd.range).dataValidation.rule = {
-                list: { inCellDropDown: true, source: cmd.source_list }
-              };
-              break;
-            case 'clear_conditional_formatting':
-              worksheet.getRange(cmd.range).conditionalFormats.clearAll();
-              break;
-            case 'add_conditional_formatting':
-              if (cmd.type === 'colorScale') {
-                worksheet.getRange(cmd.range).conditionalFormats.add(Excel.ConditionalFormatType.colorScale);
-              } else if (cmd.type === 'dataBar') {
-                worksheet.getRange(cmd.range).conditionalFormats.add(Excel.ConditionalFormatType.dataBar);
-              }
-              break;
-            case 'delete_pivot_table': {
-              const pivot = worksheet.pivotTables.getItem(cmd.name);
-              pivot.delete();
-              break;
-            }
-          }
-        } catch (e) {
-          console.error(`Batch command ${cmd.action} failed:`, e);
-        }
-      }
-      
-      // Call sync exactly once after applying all batch operations
-      await context.sync();
-    });
-  }
-
   static async writeToRange(address: string, values: any[][]): Promise<void> {
     return Excel.run(async (context) => {
       const worksheet = context.workbook.worksheets.getActiveWorksheet();
@@ -334,6 +192,25 @@ export class ExcelService {
       else if (t.includes('scatter')) chartType = Excel.ChartType.xyscatter;
       const chart = worksheet.charts.add(chartType, range, Excel.ChartSeriesBy.auto);
       chart.title.text = title;
+      await context.sync();
+    });
+  }
+
+  static async deleteChart(chartName: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getActiveWorksheet();
+      if (chartName.toLowerCase() === 'all') {
+        const charts = sheet.charts;
+        charts.load("items");
+        await context.sync();
+        charts.items.forEach(c => c.delete());
+      } else {
+        const chart = sheet.charts.getItemOrNullObject(chartName);
+        await context.sync();
+        if (!chart.isNullObject) {
+          chart.delete();
+        }
+      }
       await context.sync();
     });
   }
@@ -524,6 +401,176 @@ export class ExcelService {
     });
   }
 
+  // --- 12 New Data Cleaning & Analyzing Features ---
+
+  static async removeDuplicates(address: string, columns?: number[]): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      if (columns && columns.length > 0) {
+        range.removeDuplicates(columns, true);
+      } else {
+        range.removeDuplicates([], true);
+      }
+      await context.sync();
+    });
+  }
+
+  static async trimWhitespace(address: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.load('values');
+      await context.sync();
+      const newValues = range.values.map(row => 
+        row.map(cell => typeof cell === 'string' ? cell.trim() : cell)
+      );
+      range.values = newValues;
+      await context.sync();
+    });
+  }
+
+  static async changeCase(address: string, type: 'upper' | 'lower' | 'proper'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.load('values');
+      await context.sync();
+      
+      const toProper = (str: string) => str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+      
+      const newValues = range.values.map(row => 
+        row.map(cell => {
+          if (typeof cell === 'string') {
+            if (type === 'upper') return cell.toUpperCase();
+            if (type === 'lower') return cell.toLowerCase();
+            if (type === 'proper') return toProper(cell);
+          }
+          return cell;
+        })
+      );
+      range.values = newValues;
+      await context.sync();
+    });
+  }
+
+  static async removeBlankRows(address: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.load(['values', 'rowCount', 'address']);
+      await context.sync();
+      
+      const rowsToDelete: number[] = [];
+      for (let r = 0; r < range.rowCount; r++) {
+        const rowData = range.values[r];
+        const isBlank = rowData.every(val => val === '' || val === null || val === undefined);
+        if (isBlank) rowsToDelete.push(r);
+      }
+      
+      // Delete from bottom to top to avoid shifting indexes
+      for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+        const rowRange = range.getRow(rowsToDelete[i]);
+        rowRange.delete(Excel.DeleteShiftDirection.up);
+      }
+      await context.sync();
+    });
+  }
+
+  static async applyFilter(address: string, columnIndex: number, criteria: string[]): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      worksheet.autoFilter.apply(range, columnIndex, {
+        filterOn: Excel.FilterOn.values,
+        values: criteria
+      });
+      await context.sync();
+    });
+  }
+
+  static async clearFilter(): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      worksheet.autoFilter.clearCriteria();
+      await context.sync();
+    });
+  }
+
+  static async groupData(address: string, byRows: boolean = true): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.group(byRows ? Excel.GroupOption.byRows : Excel.GroupOption.byColumns);
+      await context.sync();
+    });
+  }
+
+  static async ungroupData(address: string, byRows: boolean = true): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.ungroup(byRows ? Excel.GroupOption.byRows : Excel.GroupOption.byColumns);
+      await context.sync();
+    });
+  }
+
+  static async addSparklines(address: string, sourceAddress: string, type: 'line' | 'column' = 'line'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const destRange = worksheet.getRange(address);
+      const srcRange = worksheet.getRange(sourceAddress);
+      (worksheet as any).sparklineGroups.add(
+        type === 'line' ? 'Line' : 'Column',
+        destRange,
+        srcRange
+      );
+      await context.sync();
+    });
+  }
+
+  static async formatChart(chartName: string, opts: { title?: string, showDataLabels?: boolean, legendPosition?: Excel.ChartLegendPosition }): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const chart = worksheet.charts.getItem(chartName);
+      if (opts.title) {
+        chart.title.text = opts.title;
+        chart.title.visible = true;
+      }
+      if (opts.showDataLabels !== undefined) {
+        chart.dataLabels.showValue = opts.showDataLabels;
+      }
+      if (opts.legendPosition) {
+        chart.legend.position = opts.legendPosition;
+        chart.legend.visible = true;
+      }
+      await context.sync();
+    });
+  }
+
+  static async highlightDuplicates(address: string, color: string = 'pink'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      const conditionalFormat = range.conditionalFormats.add(Excel.ConditionalFormatType.presetCriteria);
+      conditionalFormat.preset.rule = { criterion: Excel.ConditionalFormatPresetCriterion.duplicateValues };
+      conditionalFormat.preset.format.fill.color = color;
+      conditionalFormat.preset.format.font.color = '#9C0006';
+      await context.sync();
+    });
+  }
+
+  static async highlightTopBottom(address: string, type: 'top' | 'bottom', count: number = 10, color: string = 'lightgreen'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      const conditionalFormat = range.conditionalFormats.add(Excel.ConditionalFormatType.topBottom);
+      conditionalFormat.topBottom.rule = { rank: count, type: type === 'top' ? Excel.ConditionalTopBottomCriterionType.topItems : Excel.ConditionalTopBottomCriterionType.bottomItems };
+      conditionalFormat.topBottom.format.fill.color = color;
+      await context.sync();
+    });
+  }
+
   static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
       const data = await this.getSelectedRange();
@@ -536,19 +583,4 @@ export class ExcelService {
       return `Unable to read Excel context: ${(e as Error).message}`;
     }
   }
-
-  // Stubs for missing methods called in useChat.ts
-  static async removeDuplicates(_range: string, _columns: number[]): Promise<void> {}
-  static async trimWhitespace(_range: string): Promise<void> {}
-  static async changeCase(_range: string, _type: string): Promise<void> {}
-  static async removeBlankRows(_range: string): Promise<void> {}
-  static async applyFilter(_range: string, _columnIndex: number, _criteria: string[]): Promise<void> {}
-  static async clearFilter(): Promise<void> {}
-  static async groupData(_range: string, _byRows: boolean): Promise<void> {}
-  static async ungroupData(_range: string, _byRows: boolean): Promise<void> {}
-  static async addSparklines(_range: string, _sourceRange: string, _type: string): Promise<void> {}
-  static async formatChart(_chartName: string, _options: any): Promise<void> {}
-  static async highlightDuplicates(_range: string, _color: string): Promise<void> {}
-  static async highlightTopBottom(_range: string, _type: string, _count: number, _color: string): Promise<void> {}
 }
-

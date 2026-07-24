@@ -35,20 +35,26 @@ export class GenericOpenAIProvider extends BaseAIProvider {
       headers['X-Title'] = 'Office AI Copilot';
     }
 
+    const bodyPayload: any = {
+      model: options.model,
+      messages: options.messages,
+      temperature: options.temperature ?? 0.7,
+      top_p: 0.7,
+      max_tokens: options.maxTokens ?? 1024,
+      stream: false,
+    };
+
+    if (options.webSearch && this._baseUrl.includes('openrouter.ai')) {
+      bodyPayload.plugins = [{ id: "web", max_results: 5 }];
+    }
+
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         targetUrl,
         headers,
-        body: {
-          model: options.model,
-          messages: options.messages,
-          temperature: options.temperature ?? 0.7,
-          top_p: 0.7,
-          max_tokens: options.maxTokens ?? 1024,
-          stream: false,
-        }
+        body: bodyPayload
       }),
     });
 
@@ -82,20 +88,26 @@ export class GenericOpenAIProvider extends BaseAIProvider {
       headers['X-Title'] = 'Office AI Copilot';
     }
 
+    const bodyPayload: any = {
+      model: options.model,
+      messages: options.messages,
+      temperature: options.temperature ?? 0.7,
+      top_p: 0.7,
+      max_tokens: options.maxTokens ?? 1024,
+      stream: true,
+    };
+
+    if (options.webSearch && this._baseUrl.includes('openrouter.ai')) {
+      bodyPayload.plugins = [{ id: "web", max_results: 5 }];
+    }
+
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         targetUrl,
         headers,
-        body: {
-          model: options.model,
-          messages: options.messages,
-          temperature: options.temperature ?? 0.7,
-          top_p: 0.7,
-          max_tokens: options.maxTokens ?? 1024,
-          stream: true,
-        }
+        body: bodyPayload
       }),
     });
 
