@@ -20,7 +20,7 @@ export class OpenRouterProvider extends BaseAIProvider {
     return {
       'Authorization': `Bearer ${this.apiKey}`,
       'HTTP-Referer': window.location.href || 'http://localhost:3000',
-      'X-Title': 'Office AI Copilot',
+      'X-Title': 'Your Co-Pilot',
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };

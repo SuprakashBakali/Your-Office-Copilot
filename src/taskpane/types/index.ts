@@ -1,5 +1,5 @@
 // ============================================================
-// Office AI Copilot — Core Type Definitions
+// Your Co-Pilot — Core Type Definitions
 // ============================================================
 
 // ---- AI Provider Types ----

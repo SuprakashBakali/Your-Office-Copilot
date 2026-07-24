@@ -5,7 +5,7 @@ Office.onReady(() => {
 });
 
 /**
- * Shows the AI Copilot taskpane.
+ * Shows the Your Co-Pilot taskpane.
  * This is called when the user clicks the ribbon button.
  */
 function showTaskpane(event: Office.AddinCommands.Event) {

@@ -89,7 +89,7 @@ export const Header: React.FC = () => {
           <Bot24Regular />
         </div>
         <div className={classes.titleText}>
-          <Text className={classes.title}>AI Copilot</Text>
+          <Text className={classes.title}>Your Co-Pilot</Text>
           <span className={classes.subtitle}>
             <span className={classes.providerDot} style={{ backgroundColor: providerConfig?.color || '#76B900' }} />
             {providerConfig?.name || 'NVIDIA NIM'} · {hostLabel}

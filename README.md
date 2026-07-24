@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.jpg" alt="Office AI Copilot" width="128" height="128" style="border-radius: 24px;" />
+  <img src="assets/icon.jpg" alt="Your Co-Pilot" width="128" height="128" style="border-radius: 24px;" />
 </p>
 
-<h1 align="center">Office AI Copilot</h1>
+<h1 align="center">Your Co-Pilot</h1>
 
 <p align="center">
   <strong>Your AI-powered assistant for Excel, Word & PowerPoint — powered by 7 AI providers</strong>
@@ -17,20 +17,20 @@
 </p>
 
 <p align="center">
-  <img src="assets/preview.jpg" alt="Office AI Copilot Preview" width="350" />
+  <img src="assets/preview.jpg" alt="Your Co-Pilot Preview" width="350" />
 </p>
 
 ---
 
 ## 🌟 What is this?
 
-**Office AI Copilot** is a free, open-source alternative to Microsoft Copilot that runs as a sidebar add-in inside Excel, Word, and PowerPoint. It connects to **7 AI providers** (including free ones) and gives you AI superpowers for spreadsheets, documents, and presentations.
+**Your Co-Pilot** is a free, open-source alternative to Microsoft Copilot that runs as a sidebar add-in inside Excel, Word, and PowerPoint. It connects to **7 AI providers** (including free ones) and gives you AI superpowers for spreadsheets, documents, and presentations.
 
 > **🔒 Privacy First:** Your API keys are stored locally in your browser. Your data is sent _only_ to the AI provider you choose — never to any third-party server.
 
 ### Why use this instead of Microsoft Copilot?
 
-| Feature | Microsoft Copilot | Office AI Copilot |
+| Feature | Microsoft Copilot | Your Co-Pilot |
 |---------|:-----------------:|:-----------------:|
 | Price | $30/month | **Free** |
 | AI Provider | GPT-4 only | **7 providers** (you choose) |

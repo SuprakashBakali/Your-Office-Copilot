@@ -191,7 +191,7 @@ Rules:
 - If the cell address is ambiguous, use the most likely one based on context.
 - Never ask the user to do it manually if you can do it with an EXCEL_CMD block.` : '';
 
-    const systemPrompt = `You are an AI Copilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
+    const systemPrompt = `You are an Your Co-Pilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
 
     // Ensure we have an active conversation
     let convId = activeConversationId;

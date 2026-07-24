@@ -1,0 +1,1 @@
+(()=>{"use strict";Office.onReady(()=>{}),globalThis.showTaskpane=function(e){Office.addin.showAsTaskpane(),e.completed()}})();

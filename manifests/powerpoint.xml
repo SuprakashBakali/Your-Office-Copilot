@@ -8,9 +8,9 @@
 
   <Id>c3d4e5f6-a7b8-9012-cdef-123456789012</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>Office AI Copilot</ProviderName>
+  <ProviderName>Your Co-Pilot</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="AI Copilot for PowerPoint" />
+  <DisplayName DefaultValue="Your Co-Pilot for PowerPoint" />
   <Description DefaultValue="Professional AI-powered assistant for PowerPoint — improve slides, generate speaker notes, create presentations, and more." />
   <IconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-64.png" />
@@ -89,11 +89,11 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/taskpane.html" />
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="AI Copilot" />
-        <bt:String id="OpenCopilot.Label" DefaultValue="AI Copilot" />
+        <bt:String id="GroupLabel" DefaultValue="Your Co-Pilot" />
+        <bt:String id="OpenCopilot.Label" DefaultValue="Your Co-Pilot" />
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="OpenCopilot.Tooltip" DefaultValue="Open the AI Copilot sidebar to improve slides, generate notes, create presentations, and more." />
+        <bt:String id="OpenCopilot.Tooltip" DefaultValue="Open the Your Co-Pilot sidebar to improve slides, generate notes, create presentations, and more." />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

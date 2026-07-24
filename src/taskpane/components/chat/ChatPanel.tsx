@@ -157,7 +157,7 @@ export const ChatPanel: React.FC = () => {
         {messages.length === 0 ? (
           <EmptyState
             icon={<ChatRegular />}
-            title="Welcome to AI Copilot"
+            title="Welcome to Your Co-Pilot"
             description={`Chat with your ${host} workbook. Ask questions, analyze data, generate formulas, and more.`}
             actionText="Start a new chat"
             onAction={createConversation}

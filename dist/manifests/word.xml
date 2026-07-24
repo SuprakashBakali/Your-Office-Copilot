@@ -8,16 +8,16 @@
 
   <Id>b2c3d4e5-f6a7-8901-bcde-f12345678901</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>Your Co-Pilot</ProviderName>
+  <ProviderName>Office AI Copilot</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Your Co-Pilot for Word" />
+  <DisplayName DefaultValue="AI Copilot for Word" />
   <Description DefaultValue="Professional AI-powered assistant for Word — rewrite text, summarize documents, fix grammar, generate reports, and more." />
-  <IconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-64.png" />
+  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png" />
   <SupportUrl DefaultValue="https://github.com/office-ai-copilot" />
 
   <AppDomains>
-    <AppDomain>https://office-ai-copilot-8uzu.vercel.app</AppDomain>
+    <AppDomain>https://localhost:3000</AppDomain>
     <AppDomain>https://integrate.api.nvidia.com</AppDomain>
     <AppDomain>https://api.openai.com</AppDomain>
     <AppDomain>https://api.anthropic.com</AppDomain>
@@ -37,7 +37,7 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://office-ai-copilot-8uzu.vercel.app/taskpane.html" />
+    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -80,20 +80,20 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-16.png" />
-        <bt:Image id="Icon.32" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
-        <bt:Image id="Icon.80" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-80.png" />
+        <bt:Image id="Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png" />
+        <bt:Image id="Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png" />
+        <bt:Image id="Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/commands.html" />
-        <bt:Url id="Taskpane.Url" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/taskpane.html" />
+        <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html" />
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="Your Co-Pilot" />
-        <bt:String id="OpenCopilot.Label" DefaultValue="Your Co-Pilot" />
+        <bt:String id="GroupLabel" DefaultValue="AI Copilot" />
+        <bt:String id="OpenCopilot.Label" DefaultValue="AI Copilot" />
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="OpenCopilot.Tooltip" DefaultValue="Open the Your Co-Pilot sidebar to rewrite text, summarize documents, fix grammar, and more." />
+        <bt:String id="OpenCopilot.Tooltip" DefaultValue="Open the AI Copilot sidebar to rewrite text, summarize documents, fix grammar, and more." />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

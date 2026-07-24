@@ -8,9 +8,9 @@
 
   <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>Office AI Copilot</ProviderName>
+  <ProviderName>Your Co-Pilot</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="AI Copilot for Excel" />
+  <DisplayName DefaultValue="Your Co-Pilot for Excel" />
   <Description DefaultValue="Professional AI-powered assistant for Excel — analyze data, generate formulas, create charts, clean data, and more. Powered by NVIDIA NIM and multiple AI providers." />
   <IconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-64.png" />
@@ -91,11 +91,11 @@
         <bt:Url id="Taskpane.Url" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/taskpane.html" />
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="AI Copilot" />
-        <bt:String id="OpenCopilot.Label" DefaultValue="AI Copilot" />
+        <bt:String id="GroupLabel" DefaultValue="Your Co-Pilot" />
+        <bt:String id="OpenCopilot.Label" DefaultValue="Your Co-Pilot" />
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="OpenCopilot.Tooltip" DefaultValue="Open the AI Copilot sidebar to analyze data, generate formulas, create charts, and more." />
+        <bt:String id="OpenCopilot.Tooltip" DefaultValue="Open the Your Co-Pilot sidebar to analyze data, generate formulas, create charts, and more." />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

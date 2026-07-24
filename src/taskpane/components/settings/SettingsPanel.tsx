@@ -254,7 +254,7 @@ export const SettingsPanel: React.FC = () => {
       <div className={classes.versionInfo}>
         <InfoRegular />
         <div>
-          <Text size={200} weight="semibold">Office AI Copilot v1.0.0</Text>
+          <Text size={200} weight="semibold">Your Co-Pilot v1.0.0</Text>
           <br />
           <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>Powered by NVIDIA NIM · React + Fluent UI</Text>
         </div>
