@@ -343,8 +343,7 @@ export const CustomModelManager: React.FC = () => {
           const end = performance.now();
           result = { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
         } catch (e) {
-          const end = performance.now();
-          result = { id: model.id, name: model.name, latency: Math.round(end - start), status: 'error' as const, error: (e as Error).message };
+          result = { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: (e as Error).message };
         }
       }
       
