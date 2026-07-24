@@ -11,6 +11,8 @@ async function getHttpsOptions() {
   return { ca: httpsOptions.ca, key: httpsOptions.key, cert: httpsOptions.cert };
 }
 
+const webpack = require("webpack");
+
 module.exports = async (env, options) => {
   const dev = options.mode === "development";
 
@@ -27,6 +29,19 @@ module.exports = async (env, options) => {
     },
     resolve: {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".css"],
+      fallback: {
+        "zlib": false,
+        "fs": false,
+        "path": false,
+        "crypto": false,
+        "stream": false,
+        "http": false,
+        "https": false,
+        "os": false,
+        "net": false,
+        "tls": false,
+        "child_process": false,
+      }
     },
     module: {
       rules: [
@@ -56,6 +71,9 @@ module.exports = async (env, options) => {
       ],
     },
     plugins: [
+      new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+        resource.request = resource.request.replace(/^node:/, "");
+      }),
       new HtmlWebpackPlugin({
         filename: "taskpane.html",
         template: "./src/taskpane/taskpane.html",

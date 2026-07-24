@@ -7,146 +7,57 @@ import { ExcelService } from '../services/office/ExcelService';
 
 // ---- Excel Command Execution ----
 
-export interface ExcelCmdResult { executed: number; errors: string[]; }
+export interface ExcelCmdResult { executed: number; errors: string[]; bashOutput?: string; }
 
 export async function executeExcelCommands(text: string): Promise<ExcelCmdResult> {
   const results: ExcelCmdResult = { executed: 0, errors: [] };
   const cmdRegex = /<EXCEL_CMD>([\/\s\S]*?)<\/EXCEL_CMD>/g;
+  const commands: any[] = [];
   let match;
+  
   while ((match = cmdRegex.exec(text)) !== null) {
     try {
-      const cmd = JSON.parse(match[1].trim());
-      switch (cmd.action) {
-        case 'write_cell':
-          await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);
-          results.executed++;
-          break;
-        case 'write_formula':
-          await ExcelService.insertFormula(cmd.cell, cmd.formula);
-          results.executed++;
-          break;
-        case 'write_range':
-          await ExcelService.writeToRange(cmd.range, cmd.values);
-          results.executed++;
-          break;
-        case 'create_chart':
-          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title);
-          results.executed++;
-          break;
-        case 'create_pivot_table':
-          await ExcelService.createPivotTable(cmd.source_range, cmd.target_cell, cmd.row_field, cmd.value_field, cmd.pivot_name);
-          results.executed++;
-          break;
-        case 'clear_range':
-          await ExcelService.clearRange(cmd.range);
-          results.executed++;
-          break;
-        case 'format_range':
-          await ExcelService.formatRange(cmd.range, cmd.options);
-          results.executed++;
-          break;
-        case 'add_sheet':
-          await ExcelService.addSheet(cmd.name);
-          results.executed++;
-          break;
-        case 'delete_sheet':
-          await ExcelService.deleteSheet(cmd.name);
-          results.executed++;
-          break;
-        case 'insert_range':
-          await ExcelService.insertRange(cmd.range, cmd.shift_direction);
-          results.executed++;
-          break;
-        case 'delete_range':
-          await ExcelService.deleteRange(cmd.range, cmd.shift_direction);
-          results.executed++;
-          break;
-        case 'merge_cells':
-          await ExcelService.mergeCells(cmd.range, cmd.merge_across);
-          results.executed++;
-          break;
-        case 'create_table':
-          await ExcelService.createTable(cmd.range, cmd.has_headers, cmd.name);
-          results.executed++;
-          break;
-        case 'sort_range':
-          await ExcelService.sortRange(cmd.range, cmd.column_index, cmd.ascending);
-          results.executed++;
-          break;
-        case 'find_replace':
-          await ExcelService.findAndReplace(cmd.range, cmd.find_text, cmd.replace_text);
-          results.executed++;
-          break;
-        case 'add_data_validation':
-          await ExcelService.addDataValidation(cmd.range, cmd.source_list);
-          results.executed++;
-          break;
-        case 'add_conditional_formatting':
-          await ExcelService.addConditionalFormatting(cmd.range, cmd.type);
-          results.executed++;
-          break;
-        case 'remove_duplicates':
-          await ExcelService.removeDuplicates(cmd.range, cmd.columns);
-          results.executed++;
-          break;
-        case 'trim_whitespace':
-          await ExcelService.trimWhitespace(cmd.range);
-          results.executed++;
-          break;
-        case 'change_case':
-          await ExcelService.changeCase(cmd.range, cmd.type);
-          results.executed++;
-          break;
-        case 'remove_blank_rows':
-          await ExcelService.removeBlankRows(cmd.range);
-          results.executed++;
-          break;
-        case 'apply_filter':
-          await ExcelService.applyFilter(cmd.range, cmd.column_index, cmd.criteria);
-          results.executed++;
-          break;
-        case 'clear_filter':
-          await ExcelService.clearFilter();
-          results.executed++;
-          break;
-        case 'group_data':
-          await ExcelService.groupData(cmd.range, cmd.by_rows);
-          results.executed++;
-          break;
-        case 'ungroup_data':
-          await ExcelService.ungroupData(cmd.range, cmd.by_rows);
-          results.executed++;
-          break;
-        case 'add_sparklines':
-          await ExcelService.addSparklines(cmd.range, cmd.source_range, cmd.type);
-          results.executed++;
-          break;
-        case 'format_chart':
-          await ExcelService.formatChart(cmd.chart_name, cmd.options);
-          results.executed++;
-          break;
-        case 'highlight_duplicates':
-          await ExcelService.highlightDuplicates(cmd.range, cmd.color);
-          results.executed++;
-          break;
-        case 'highlight_top_bottom':
-          await ExcelService.highlightTopBottom(cmd.range, cmd.type, cmd.count, cmd.color);
-          results.executed++;
-          break;
-        case 'evaluate_office_js':
+      commands.push(JSON.parse(match[1].trim()));
+    } catch (e) {
+      results.errors.push((e as Error).message);
+    }
+  }
+
+  if (commands.length > 0) {
+    const regularCmds = commands.filter(c => c.action !== 'evaluate_office_js' && c.action !== 'bash');
+    if (regularCmds.length > 0) {
+      try {
+        await ExcelService.executeBatch(regularCmds);
+        results.executed += regularCmds.length;
+      } catch (e) {
+        results.errors.push((e as Error).message);
+      }
+    }
+
+    for (const cmd of commands) {
+      if (cmd.action === 'evaluate_office_js') {
+        try {
           const { sandboxedEval } = await import('../utils/sandbox');
           await Excel.run(async (context) => {
             await sandboxedEval(cmd.code, { context, Excel });
           });
           results.executed++;
-          break;
-        default:
-          results.errors.push(`Unknown action: ${cmd.action}`);
+        } catch (e) {
+          results.errors.push((e as Error).message);
+        }
+      } else if (cmd.action === 'bash') {
+        try {
+          const { runBashCommand } = await import('../utils/vfs');
+          const output = await runBashCommand(cmd.command);
+          results.bashOutput = (results.bashOutput ? results.bashOutput + '\n\n' : '') + output;
+          results.executed++;
+        } catch (e) {
+          results.errors.push((e as Error).message);
+        }
       }
-    } catch (e) {
-      results.errors.push((e as Error).message);
     }
   }
+
   return results;
 }
 
@@ -335,6 +246,7 @@ Available actions:
 - HL Duplicates:   <EXCEL_CMD>{"action":"highlight_duplicates","range":"A1:A100","color":"pink"}</EXCEL_CMD>
 - HL Top/Bottom:   <EXCEL_CMD>{"action":"highlight_top_bottom","range":"B1:B100","type":"top","count":10,"color":"lightgreen"}</EXCEL_CMD>
 - Evaluate Code:   <EXCEL_CMD>{"action":"evaluate_office_js","code":"const sheet = context.workbook.worksheets.getActiveWorksheet(); sheet.getRange('A1').values = [['Hello']]; await context.sync();"}</EXCEL_CMD>
+- Bash Command:    <EXCEL_CMD>{"action":"bash","command":"echo Hello > test.txt"}</EXCEL_CMD>
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
@@ -429,77 +341,71 @@ Rules:
       ...(conv?.messages || []),
     ];
 
-    // Add placeholder assistant message
-    const assistantMessage: ChatMessage = {
-      id: generateId(),
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-      model: settings.activeModel,
-      provider: settings.activeProvider,
-    };
-
-    const assistantMsgId = assistantMessage.id;
-    currentConvs = currentConvs.map(c => {
-      if (c.id === convId) {
-        return { ...c, messages: [...c.messages, assistantMessage] };
-      }
-      return c;
-    });
-    updateConversations(currentConvs);
-
     try {
-      if (settings.streamResponses) {
-        // Streaming mode
-        let fullResponse = "";
-        await ai.sendMessageStream(aiMessages, {}, (chunk) => {
-          fullResponse += chunk;
-          // Update the assistant message in real-time
-          setConversations(prev => prev.map(c => {
-            if (c.id === convId) {
-              return {
-                ...c,
-                messages: c.messages.map(m =>
-                  m.id === assistantMsgId ? { ...m, content: fullResponse } : m
-                ),
-              };
-            }
-            return c;
-          }));
-        });
+      let isDone = false;
+      let turns = 0;
+      
+      while (!isDone && turns < 3) {
+        turns++;
+        
+        // Add placeholder assistant message
+        const assistantMessage: ChatMessage = {
+          id: generateId(),
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+          model: settings.activeModel,
+          provider: settings.activeProvider,
+        };
 
-        // Final save — execute commands then clean response
+        const assistantMsgId = assistantMessage.id;
+        currentConvs = currentConvs.map(c => {
+          if (c.id === convId) {
+            return { ...c, messages: [...c.messages, assistantMessage] };
+          }
+          return c;
+        });
+        updateConversations(currentConvs);
+
+        let fullResponse = "";
+
+        if (settings.streamResponses) {
+          let lastUpdateTime = Date.now();
+          await ai.sendMessageStream(aiMessages, {}, (chunk) => {
+            fullResponse += chunk;
+            const now = Date.now();
+            if (now - lastUpdateTime > 80) { // Throttle React state updates to 80ms
+              lastUpdateTime = now;
+              setConversations(prev => prev.map(c => {
+                if (c.id === convId) {
+                  return {
+                    ...c,
+                    messages: c.messages.map(m =>
+                      m.id === assistantMsgId ? { ...m, content: fullResponse } : m
+                    ),
+                  };
+                }
+                return c;
+              }));
+            }
+          });
+        } else {
+          fullResponse = await ai.sendMessage(aiMessages);
+        }
+
+        let bashOutput: string | undefined;
         if (hostApp === 'Excel') {
-          try { await executeExcelCommands(fullResponse); } catch {}
+          try { 
+            const res = await executeExcelCommands(fullResponse); 
+            bashOutput = res.bashOutput;
+          } catch {}
         } else if (hostApp === 'Word') {
           try { await executeWordCommands(fullResponse); } catch {}
         } else if (hostApp === 'PowerPoint') {
           try { await executePPTCommands(fullResponse); } catch {}
         }
+
         const displayText = cleanResponseText(fullResponse);
-        const finalConvs = currentConvs.map(c => {
-          if (c.id === convId) {
-            return {
-              ...c,
-              messages: c.messages.map(m =>
-                m.id === assistantMsgId ? { ...m, content: displayText } : m
-              ),
-            };
-          }
-          return c;
-        });
-        saveConversations(finalConvs);
-      } else {
-        // Non-streaming mode — execute commands then clean response
-        const response = await ai.sendMessage(aiMessages);
-        if (hostApp === 'Excel') {
-          try { await executeExcelCommands(response); } catch {}
-        } else if (hostApp === 'Word') {
-          try { await executeWordCommands(response); } catch {}
-        } else if (hostApp === 'PowerPoint') {
-          try { await executePPTCommands(response); } catch {}
-        }
-        const displayText = cleanResponseText(response);
         currentConvs = currentConvs.map(c => {
           if (c.id === convId) {
             return {
@@ -511,23 +417,39 @@ Rules:
           }
           return c;
         });
+        
+        aiMessages.push({ id: assistantMsgId, role: 'assistant', content: fullResponse, timestamp: Date.now() });
+
+        if (bashOutput) {
+          const sysMsg: ChatMessage = {
+            id: generateId(),
+            role: 'system',
+            content: `[VFS Bash Output]:\n${bashOutput}`,
+            timestamp: Date.now()
+          };
+          aiMessages.push(sysMsg);
+          currentConvs = currentConvs.map(c => {
+            if (c.id === convId) {
+              return { ...c, messages: [...c.messages, sysMsg] };
+            }
+            return c;
+          });
+        } else {
+          isDone = true;
+        }
+        
         updateConversations(currentConvs);
       }
     } catch (err) {
-      // Update assistant message with error
-      currentConvs = currentConvs.map(c => {
-        if (c.id === convId) {
-          return {
-            ...c,
-            messages: c.messages.map(m =>
-              m.id === assistantMsgId
-                ? { ...m, content: `⚠️ Error: ${(err as Error).message}` }
-                : m
-            ),
-          };
-        }
-        return c;
-      });
+      const errorMsg: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: `⚠️ Error: ${(err as Error).message}`,
+        timestamp: Date.now(),
+      };
+      currentConvs = currentConvs.map(c => 
+        c.id === convId ? { ...c, messages: [...c.messages, errorMsg] } : c
+      );
       updateConversations(currentConvs);
     }
   }, [activeConversationId, conversations, hostApp, ai, updateConversations]);

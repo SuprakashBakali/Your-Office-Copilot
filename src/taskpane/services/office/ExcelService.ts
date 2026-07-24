@@ -138,6 +138,103 @@ export class ExcelService {
     });
   }
 
+  static async executeBatch(commands: any[]): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      
+      for (const cmd of commands) {
+        try {
+          switch (cmd.action) {
+            case 'write_cell':
+              worksheet.getRange(cmd.cell).values = [[cmd.value]];
+              break;
+            case 'write_formula':
+              worksheet.getRange(cmd.cell).formulas = [[cmd.formula]];
+              break;
+            case 'write_range':
+              worksheet.getRange(cmd.range).values = cmd.values;
+              break;
+            case 'create_chart':
+              const range = worksheet.getRange(cmd.data_range);
+              let chartType = Excel.ChartType.columnClustered;
+              const t = (cmd.chart_type || '').toLowerCase();
+              if (t.includes('pie')) chartType = Excel.ChartType.pie;
+              else if (t.includes('line')) chartType = Excel.ChartType.line;
+              else if (t.includes('bar')) chartType = Excel.ChartType.barClustered;
+              else if (t.includes('area')) chartType = Excel.ChartType.area;
+              else if (t.includes('scatter')) chartType = Excel.ChartType.xyscatter;
+              const chart = worksheet.charts.add(chartType, range, Excel.ChartSeriesBy.auto);
+              chart.title.text = cmd.title;
+              break;
+            case 'clear_range':
+              worksheet.getRange(cmd.range).clear();
+              break;
+            case 'format_range':
+              const fmtRange = worksheet.getRange(cmd.range);
+              const opts = cmd.options || {};
+              if (opts.bold !== undefined) fmtRange.format.font.bold = opts.bold;
+              if (opts.italic !== undefined) fmtRange.format.font.italic = opts.italic;
+              if (opts.backgroundColor) fmtRange.format.fill.color = opts.backgroundColor;
+              if (opts.fontColor) fmtRange.format.font.color = opts.fontColor;
+              if (opts.fontSize) fmtRange.format.font.size = opts.fontSize;
+              if (opts.wrapText !== undefined) fmtRange.format.wrapText = opts.wrapText;
+              if (opts.horizontalAlignment) fmtRange.format.horizontalAlignment = opts.horizontalAlignment as any;
+              if (opts.verticalAlignment) fmtRange.format.verticalAlignment = opts.verticalAlignment as any;
+              if (opts.numberFormat) fmtRange.numberFormat = [[opts.numberFormat]];
+              break;
+            case 'add_sheet':
+              context.workbook.worksheets.add(cmd.name);
+              break;
+            case 'delete_sheet':
+              context.workbook.worksheets.getItem(cmd.name).delete();
+              break;
+            case 'insert_range':
+              worksheet.getRange(cmd.range).insert(
+                cmd.shift_direction === 'Down' ? Excel.InsertShiftDirection.down : Excel.InsertShiftDirection.right
+              );
+              break;
+            case 'delete_range':
+              worksheet.getRange(cmd.range).delete(
+                cmd.shift_direction === 'Up' ? Excel.DeleteShiftDirection.up : Excel.DeleteShiftDirection.left
+              );
+              break;
+            case 'merge_cells':
+              worksheet.getRange(cmd.range).merge(cmd.merge_across);
+              break;
+            case 'create_table':
+              const tableRange = worksheet.getRange(cmd.range);
+              const table = worksheet.tables.add(tableRange, cmd.has_headers);
+              if (cmd.name) table.name = cmd.name;
+              break;
+            case 'sort_range':
+              worksheet.getRange(cmd.range).sort.apply([{ key: cmd.column_index, ascending: cmd.ascending }]);
+              break;
+            case 'find_replace':
+              worksheet.getRange(cmd.range).replaceAll(cmd.find_text, cmd.replace_text, { completeMatch: false, matchCase: false });
+              break;
+            case 'add_data_validation':
+              worksheet.getRange(cmd.range).dataValidation.rule = {
+                list: { inCellDropDown: true, source: cmd.source_list }
+              };
+              break;
+            case 'add_conditional_formatting':
+              if (cmd.type === 'colorScale') {
+                worksheet.getRange(cmd.range).conditionalFormats.add(Excel.ConditionalFormatType.colorScale);
+              } else if (cmd.type === 'dataBar') {
+                worksheet.getRange(cmd.range).conditionalFormats.add(Excel.ConditionalFormatType.dataBar);
+              }
+              break;
+          }
+        } catch (e) {
+          console.error(`Batch command ${cmd.action} failed:`, e);
+        }
+      }
+      
+      // Call sync exactly once after applying all batch operations
+      await context.sync();
+    });
+  }
+
   static async writeToRange(address: string, values: any[][]): Promise<void> {
     return Excel.run(async (context) => {
       const worksheet = context.workbook.worksheets.getActiveWorksheet();
