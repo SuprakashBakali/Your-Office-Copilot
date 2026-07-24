@@ -102,8 +102,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
       <div className={classes.header}>
         {isUser ? <PersonRegular /> : <BotRegular />}
         <span>{isUser ? 'You' : 'Copilot'}</span>
-        <span>•</span>
-        <span>{formatDateTime(message.timestamp)}</span>
         {message.model && !isUser && (
           <span className={classes.modelBadge}>({message.model.split('/').pop()})</span>
         )}
