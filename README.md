@@ -116,7 +116,7 @@ git push -u origin main
 
 Then:
 1. Go to [vercel.com](https://vercel.com) → **Add New Project** → select your repo → **Deploy**
-2. Copy your Vercel URL (e.g. `https://office-ai-copilot.vercel.app`)
+2. Copy your Vercel URL (e.g. `https://your-office-copilot.vercel.app`)
 3. Update the URLs in `manifests/*.xml` (replace `https://localhost:3000` with your Vercel URL)
 4. In Excel/Word/PowerPoint: **Insert → Add-ins → Upload My Add-in** → upload the XML
 

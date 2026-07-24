@@ -14,7 +14,7 @@
   <Description DefaultValue="Professional AI-powered assistant for PowerPoint — improve slides, generate speaker notes, create presentations, and more." />
   <IconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-64.png" />
-  <SupportUrl DefaultValue="https://github.com/office-ai-copilot" />
+  <SupportUrl DefaultValue="https://github.com/SuprakashBakali/Your-Office-Copilot" />
 
   <AppDomains>
     <AppDomain>https://office-ai-copilot-8uzu.vercel.app</AppDomain>

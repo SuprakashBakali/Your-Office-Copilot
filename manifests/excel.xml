@@ -14,7 +14,7 @@
   <Description DefaultValue="Professional AI-powered assistant for Excel — analyze data, generate formulas, create charts, clean data, and more. Powered by NVIDIA NIM and multiple AI providers." />
   <IconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-64.png" />
-  <SupportUrl DefaultValue="https://github.com/office-ai-copilot" />
+  <SupportUrl DefaultValue="https://github.com/SuprakashBakali/Your-Office-Copilot" />
 
   <AppDomains>
     <AppDomain>https://office-ai-copilot-8uzu.vercel.app</AppDomain>
