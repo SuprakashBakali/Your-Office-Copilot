@@ -5,9 +5,6 @@
  */
 import { BaseAIProvider, AIRequestOptions, AIResponse, AIStreamChunk, parseOpenAISSEStream } from './types';
 
-// Detect the proxy base URL (same origin as the add-in)
-const PROXY_URL = '/api/proxy';
-
 export class GenericOpenAIProvider extends BaseAIProvider {
   readonly id = 'generic';
   readonly name = 'Custom (OpenAI-compatible)';
@@ -27,14 +24,15 @@ export class GenericOpenAIProvider extends BaseAIProvider {
 
   async chat(options: AIRequestOptions): Promise<AIResponse> {
     const targetUrl = `${this._baseUrl}/chat/completions`;
-    const response = await fetch(PROXY_URL, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
+        'HTTP-Referer': 'https://github.com/SuprakashBakali/office-ai-copilot',
+        'X-Title': 'Office AI Copilot',
       },
       body: JSON.stringify({
-        targetUrl,
         model: options.model,
         messages: options.messages,
         temperature: options.temperature ?? 0.7,
@@ -64,15 +62,16 @@ export class GenericOpenAIProvider extends BaseAIProvider {
 
   async *chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk> {
     const targetUrl = `${this._baseUrl}/chat/completions`;
-    const response = await fetch(PROXY_URL, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
         'Accept': 'text/event-stream',
+        'HTTP-Referer': 'https://github.com/SuprakashBakali/office-ai-copilot',
+        'X-Title': 'Office AI Copilot',
       },
       body: JSON.stringify({
-        targetUrl,
         model: options.model,
         messages: options.messages,
         temperature: options.temperature ?? 0.7,
