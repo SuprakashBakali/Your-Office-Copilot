@@ -132,19 +132,24 @@ export function useAI() {
     // Model switching is handled by settings update
   }, []);
 
-  const testConnection = useCallback(async (provider: AIProviderType, apiKey: string): Promise<boolean> => {
+  const testConnection = useCallback(async (provider: AIProviderType, apiKey: string): Promise<{ ok: boolean; error?: string }> => {
     try {
       const p = getProvider(provider);
       p.setApiKey(apiKey);
+      // Use a small, widely-available model for the test ping
+      const models = p.getModels().filter(m => m.id !== '__custom__');
+      const testModel = models.find(m => m.id.includes('8b') || m.id.includes('7b') || m.id.includes('mini'))
+        || models[models.length - 2]  // second to last (before __custom__)
+        || models[0];
       const response = await p.chat({
-        model: p.getModels()[0]?.id || '',
-        messages: [{ role: 'user', content: 'Hello, respond with just "OK".' }],
-        maxTokens: 10,
+        model: testModel?.id || '',
+        messages: [{ role: 'user', content: 'Hi' }],
+        maxTokens: 5,
         stream: false,
       });
-      return !!response.content;
-    } catch {
-      return false;
+      return { ok: !!response.content };
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
     }
   }, []);
 

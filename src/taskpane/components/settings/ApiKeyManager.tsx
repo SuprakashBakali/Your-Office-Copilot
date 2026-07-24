@@ -60,6 +60,7 @@ export const ApiKeyManager: React.FC<{ provider: string }> = ({ provider }) => {
   const [key, setKey] = useState(getApiKey(provider as AIProviderType) || '');
   const [showKey, setShowKey] = useState(false);
   const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const hasKey = key.length > 0;
 
@@ -67,16 +68,24 @@ export const ApiKeyManager: React.FC<{ provider: string }> = ({ provider }) => {
     setApiKey(provider as AIProviderType, key);
     if (key.length > 5) {
       setStatus('testing');
+      setErrorMsg('');
       try {
-        const ok = await testConnection(provider as AIProviderType, key);
-        setStatus(ok ? 'success' : 'error');
-      } catch {
+        const result = await testConnection(provider as AIProviderType, key);
+        if (result.ok) {
+          setStatus('success');
+        } else {
+          setStatus('error');
+          setErrorMsg(result.error || 'Could not verify key — check it and try again');
+        }
+      } catch (e) {
         setStatus('error');
+        setErrorMsg((e as Error).message || 'Unknown error');
       }
     } else if (key.length === 0) {
       setStatus('idle');
     } else {
       setStatus('error');
+      setErrorMsg('Key is too short');
     }
   };
 
@@ -125,7 +134,7 @@ export const ApiKeyManager: React.FC<{ provider: string }> = ({ provider }) => {
           )}
           {status === 'error' && (
             <div className={`${classes.status} ${classes.error}`}>
-              <ErrorCircleRegular /> Could not verify key — check it and try again
+              <ErrorCircleRegular /> {errorMsg || 'Could not verify key — check it and try again'}
             </div>
           )}
         </>
