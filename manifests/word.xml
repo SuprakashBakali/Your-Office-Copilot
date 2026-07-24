@@ -12,12 +12,12 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="AI Copilot for Word" />
   <Description DefaultValue="Professional AI-powered assistant for Word — rewrite text, summarize documents, fix grammar, generate reports, and more." />
-  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png" />
+  <IconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-64.png" />
   <SupportUrl DefaultValue="https://github.com/office-ai-copilot" />
 
   <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://office-ai-copilot-8uzu.vercel.app</AppDomain>
     <AppDomain>https://integrate.api.nvidia.com</AppDomain>
     <AppDomain>https://api.openai.com</AppDomain>
     <AppDomain>https://api.anthropic.com</AppDomain>
@@ -37,7 +37,7 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html" />
+    <SourceLocation DefaultValue="https://office-ai-copilot-8uzu.vercel.app/taskpane.html" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -80,13 +80,13 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png" />
-        <bt:Image id="Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png" />
-        <bt:Image id="Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png" />
+        <bt:Image id="Icon.16" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-16.png" />
+        <bt:Image id="Icon.32" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-32.png" />
+        <bt:Image id="Icon.80" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html" />
-        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html" />
+        <bt:Url id="Commands.Url" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/commands.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://office-ai-copilot-8uzu.vercel.app/taskpane.html" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="AI Copilot" />
