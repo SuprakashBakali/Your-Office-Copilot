@@ -235,16 +235,27 @@ export class ExcelService {
               const table = worksheet.tables.add(tableRange, cmd.has_headers);
               if (cmd.name) table.name = cmd.name;
               break;
+            case 'delete_table': {
+              const table = worksheet.tables.getItem(cmd.name);
+              table.delete();
+              break;
+            }
             case 'sort_range':
               worksheet.getRange(cmd.range).sort.apply([{ key: cmd.column_index, ascending: cmd.ascending }]);
               break;
             case 'find_replace':
               worksheet.getRange(cmd.range).replaceAll(cmd.find_text, cmd.replace_text, { completeMatch: false, matchCase: false });
               break;
+            case 'clear_data_validation':
+              worksheet.getRange(cmd.range).dataValidation.clear();
+              break;
             case 'add_data_validation':
               worksheet.getRange(cmd.range).dataValidation.rule = {
                 list: { inCellDropDown: true, source: cmd.source_list }
               };
+              break;
+            case 'clear_conditional_formatting':
+              worksheet.getRange(cmd.range).conditionalFormats.clearAll();
               break;
             case 'add_conditional_formatting':
               if (cmd.type === 'colorScale') {
@@ -253,6 +264,11 @@ export class ExcelService {
                 worksheet.getRange(cmd.range).conditionalFormats.add(Excel.ConditionalFormatType.dataBar);
               }
               break;
+            case 'delete_pivot_table': {
+              const pivot = worksheet.pivotTables.getItem(cmd.name);
+              pivot.delete();
+              break;
+            }
           }
         } catch (e) {
           console.error(`Batch command ${cmd.action} failed:`, e);

@@ -250,6 +250,10 @@ Available actions:
 - Add Sparklines:  <EXCEL_CMD>{"action":"add_sparklines","range":"E2:E10","source_range":"B2:D10","type":"line"}</EXCEL_CMD>
 - Format Chart:    <EXCEL_CMD>{"action":"format_chart","chart_name":"Chart1","options":{"title":"Sales","showDataLabels":true,"legendPosition":"bottom"}}</EXCEL_CMD>
 - HL Duplicates:   <EXCEL_CMD>{"action":"highlight_duplicates","range":"A1:A100","color":"pink"}</EXCEL_CMD>
+- Delete Table:    <EXCEL_CMD>{"action":"delete_table","name":"SalesTable"}</EXCEL_CMD>
+- Delete Pivot:    <EXCEL_CMD>{"action":"delete_pivot_table","name":"SalesSummary"}</EXCEL_CMD>
+- Clear Data Val:  <EXCEL_CMD>{"action":"clear_data_validation","range":"B2:B100"}</EXCEL_CMD>
+- Clear Cond Fmt:  <EXCEL_CMD>{"action":"clear_conditional_formatting","range":"C2:C100"}</EXCEL_CMD>
 - HL Top/Bottom:   <EXCEL_CMD>{"action":"highlight_top_bottom","range":"B1:B100","type":"top","count":10,"color":"lightgreen"}</EXCEL_CMD>
 - Evaluate Code:   <EXCEL_CMD>{"action":"evaluate_office_js","code":"const sheet = context.workbook.worksheets.getActiveWorksheet(); sheet.getRange('A1').values = [['Hello']]; await context.sync();"}</EXCEL_CMD>
 - Bash Command:    <EXCEL_CMD>{"action":"bash","command":"echo Hello > test.txt"}</EXCEL_CMD>
@@ -257,7 +261,7 @@ Available actions:
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
 - You can emit multiple EXCEL_CMD blocks in one response.
-- When fixing or updating existing data, charts, or tables, ONLY emit update commands (like update_chart) for those specific elements. Do NOT rebuild or recreate them from scratch.
+- When fixing or updating ANY existing elements (charts, tables, pivot tables, ranges, formatting, etc.), ONLY modify the specific parts that need changing or use the explicit delete/clear commands. Do NOT blindly recreate or rebuild everything from scratch.
 - After each block, briefly confirm what you did.
 - If the cell address is ambiguous, use the most likely one based on context.
 - Never ask the user to do it manually if you can do it with an EXCEL_CMD block.` : '';
