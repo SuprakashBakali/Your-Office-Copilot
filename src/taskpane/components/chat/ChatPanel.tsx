@@ -75,7 +75,7 @@ export const ChatPanel: React.FC = () => {
   const classes = useStyles();
   const { host } = useAppState();
   const {
-    conversations, activeConversation, messages, sendChatMessage,
+    conversations, activeConversation, messages, isGenerating, sendChatMessage,
     createConversation, setActiveConversation, deleteConversation, exportConversation,
   } = useChat(host);
   const { isStreaming, cancelStream } = useAI();
@@ -88,7 +88,7 @@ export const ChatPanel: React.FC = () => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
-  }, [messages, isStreaming]);
+  }, [messages, isGenerating, isStreaming]);
 
   const handleSend = React.useCallback((text: string) => {
     sendChatMessage(text, includeContext);
@@ -167,7 +167,7 @@ export const ChatPanel: React.FC = () => {
             <MessageBubble key={msg.id} message={msg} />
           ))
         )}
-        {isStreaming && messages.length > 0 && messages[messages.length - 1]?.role !== 'assistant' && (
+        {isGenerating && (
           <div style={{ padding: '8px', display: 'flex', justifyContent: 'flex-start' }}>
             <LoadingDots label="Generating..." />
           </div>
@@ -191,7 +191,7 @@ export const ChatPanel: React.FC = () => {
         </div>
         <ChatInput
           onSend={handleSend}
-          disabled={isStreaming}
+          disabled={isGenerating || isStreaming}
           onCancel={cancelStream}
           isStreaming={isStreaming}
         />

@@ -153,6 +153,7 @@ export function cleanResponseText(text: string): string {
 export function useChat(hostApp: OfficeHostType) {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   const ai = useAI();
   const { settings } = useSettings();
@@ -189,6 +190,9 @@ export function useChat(hostApp: OfficeHostType) {
   }, [conversations, hostApp, updateConversations]);
 
   const sendChatMessage = useCallback(async (content: string, includeContext: boolean = false) => {
+    if (!content.trim() || isGenerating) return;
+
+    setIsGenerating(true);
     let contextStr = "";
     if (includeContext) {
       try {
@@ -451,8 +455,10 @@ Rules:
         c.id === convId ? { ...c, messages: [...c.messages, errorMsg] } : c
       );
       updateConversations(currentConvs);
+    } finally {
+      setIsGenerating(false);
     }
-  }, [activeConversationId, conversations, hostApp, ai, updateConversations]);
+  }, [activeConversationId, conversations, hostApp, ai, updateConversations, isGenerating]);
 
   const deleteConversation = useCallback((id: string) => {
     const updated = conversations.filter(c => c.id !== id);
@@ -503,6 +509,7 @@ Rules:
     conversations,
     activeConversation,
     messages,
+    isGenerating,
     createConversation,
     sendChatMessage,
     deleteConversation,
