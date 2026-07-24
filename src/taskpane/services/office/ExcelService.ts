@@ -207,7 +207,11 @@ export class ExcelService {
 
   static async formatRange(
     address: string,
-    opts: { bold?: boolean; italic?: boolean; backgroundColor?: string; fontColor?: string; fontSize?: number }
+    opts: { 
+      bold?: boolean; italic?: boolean; backgroundColor?: string; fontColor?: string; fontSize?: number;
+      wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General"; 
+      verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string 
+    }
   ): Promise<void> {
     return Excel.run(async (context) => {
       const worksheet = context.workbook.worksheets.getActiveWorksheet();
@@ -217,6 +221,14 @@ export class ExcelService {
       if (opts.backgroundColor) range.format.fill.color = opts.backgroundColor;
       if (opts.fontColor) range.format.font.color = opts.fontColor;
       if (opts.fontSize) range.format.font.size = opts.fontSize;
+      if (opts.wrapText !== undefined) range.format.wrapText = opts.wrapText;
+      if (opts.horizontalAlignment) range.format.horizontalAlignment = opts.horizontalAlignment as any;
+      if (opts.verticalAlignment) range.format.verticalAlignment = opts.verticalAlignment as any;
+      if (opts.numberFormat) {
+        // Apply number format to all cells in range by making a 2D array matching range dimensions, or Office JS accepts a string?
+        // Wait, range.numberFormat accepts a string or 2D array. A string applies to all.
+        range.numberFormat = opts.numberFormat;
+      }
       await context.sync();
     });
   }
@@ -273,6 +285,105 @@ export class ExcelService {
       }
     });
   }
+
+  static async addSheet(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const sheets = context.workbook.worksheets;
+      sheets.add(name);
+      await context.sync();
+    });
+  }
+
+  static async deleteSheet(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getItem(name);
+      sheet.delete();
+      await context.sync();
+    });
+  }
+
+  static async insertRange(address: string, shiftDirection: 'Down' | 'Right'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.insert(shiftDirection === 'Down' ? Excel.InsertShiftDirection.down : Excel.InsertShiftDirection.right);
+      await context.sync();
+    });
+  }
+
+  static async deleteRange(address: string, shiftDirection: 'Up' | 'Left'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.delete(shiftDirection === 'Up' ? Excel.DeleteShiftDirection.up : Excel.DeleteShiftDirection.left);
+      await context.sync();
+    });
+  }
+
+  static async mergeCells(address: string, mergeAcross: boolean = false): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.merge(mergeAcross);
+      await context.sync();
+    });
+  }
+
+  static async createTable(address: string, hasHeaders: boolean, name?: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      const table = worksheet.tables.add(range, hasHeaders);
+      if (name) table.name = name;
+      await context.sync();
+    });
+  }
+
+  static async sortRange(address: string, columnIndex: number, ascending: boolean = true): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.sort.apply([{ key: columnIndex, ascending }]);
+      await context.sync();
+    });
+  }
+
+  static async findAndReplace(address: string, findText: string, replaceText: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.replaceAll(findText, replaceText, { completeMatch: false, matchCase: false });
+      await context.sync();
+    });
+  }
+
+  static async addDataValidation(address: string, sourceList: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.dataValidation.rule = {
+        list: {
+          inCellDropDown: true,
+          source: sourceList
+        }
+      };
+      await context.sync();
+    });
+  }
+
+  static async addConditionalFormatting(address: string, type: 'colorScale' | 'dataBar'): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      if (type === 'colorScale') {
+        range.conditionalFormats.add(Excel.ConditionalFormatType.colorScale);
+      } else if (type === 'dataBar') {
+        range.conditionalFormats.add(Excel.ConditionalFormatType.dataBar);
+      }
+      await context.sync();
+    });
+  }
+
   static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
       const data = await this.getSelectedRange();

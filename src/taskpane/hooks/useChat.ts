@@ -44,6 +44,46 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.formatRange(cmd.range, cmd.options);
           results.executed++;
           break;
+        case 'add_sheet':
+          await ExcelService.addSheet(cmd.name);
+          results.executed++;
+          break;
+        case 'delete_sheet':
+          await ExcelService.deleteSheet(cmd.name);
+          results.executed++;
+          break;
+        case 'insert_range':
+          await ExcelService.insertRange(cmd.range, cmd.shift_direction);
+          results.executed++;
+          break;
+        case 'delete_range':
+          await ExcelService.deleteRange(cmd.range, cmd.shift_direction);
+          results.executed++;
+          break;
+        case 'merge_cells':
+          await ExcelService.mergeCells(cmd.range, cmd.merge_across);
+          results.executed++;
+          break;
+        case 'create_table':
+          await ExcelService.createTable(cmd.range, cmd.has_headers, cmd.name);
+          results.executed++;
+          break;
+        case 'sort_range':
+          await ExcelService.sortRange(cmd.range, cmd.column_index, cmd.ascending);
+          results.executed++;
+          break;
+        case 'find_replace':
+          await ExcelService.findAndReplace(cmd.range, cmd.find_text, cmd.replace_text);
+          results.executed++;
+          break;
+        case 'add_data_validation':
+          await ExcelService.addDataValidation(cmd.range, cmd.source_list);
+          results.executed++;
+          break;
+        case 'add_conditional_formatting':
+          await ExcelService.addConditionalFormatting(cmd.range, cmd.type);
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown action: ${cmd.action}`);
       }
@@ -132,7 +172,17 @@ Available actions:
     - Supported chart types: "column", "pie", "line", "bar", "area", "scatter"
 - Create a PivotTable: <EXCEL_CMD>{"action":"create_pivot_table","source_range":"A1:D100","target_cell":"F1","row_field":"Category","value_field":"Sales","pivot_name":"SalesSummary"}</EXCEL_CMD>
 - Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100"}</EXCEL_CMD>
-- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14}}</EXCEL_CMD>
+- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"}}</EXCEL_CMD>
+- Add Sheet:       <EXCEL_CMD>{"action":"add_sheet","name":"NewData"}</EXCEL_CMD>
+- Delete Sheet:    <EXCEL_CMD>{"action":"delete_sheet","name":"OldData"}</EXCEL_CMD>
+- Insert Range:    <EXCEL_CMD>{"action":"insert_range","range":"A1:A10","shift_direction":"Down"}</EXCEL_CMD>
+- Delete Range:    <EXCEL_CMD>{"action":"delete_range","range":"B1:B10","shift_direction":"Left"}</EXCEL_CMD>
+- Merge Cells:     <EXCEL_CMD>{"action":"merge_cells","range":"A1:D1","merge_across":false}</EXCEL_CMD>
+- Create Table:    <EXCEL_CMD>{"action":"create_table","range":"A1:D100","has_headers":true,"name":"SalesTable"}</EXCEL_CMD>
+- Sort Range:      <EXCEL_CMD>{"action":"sort_range","range":"A2:D100","column_index":0,"ascending":true}</EXCEL_CMD>
+- Find & Replace:  <EXCEL_CMD>{"action":"find_replace","range":"A1:Z100","find_text":"USA","replace_text":"United States"}</EXCEL_CMD>
+- Data Validation: <EXCEL_CMD>{"action":"add_data_validation","range":"B2:B100","source_list":"Yes,No,Maybe"}</EXCEL_CMD>
+- Cond. Format:    <EXCEL_CMD>{"action":"add_conditional_formatting","range":"C2:C100","type":"colorScale"}</EXCEL_CMD>
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
