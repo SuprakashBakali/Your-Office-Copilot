@@ -1,5 +1,7 @@
 import { BaseAIProvider, AIRequestOptions, AIResponse, AIStreamChunk, parseOpenAISSEStream } from './types';
 
+const PROXY_URL = '/api/proxy';
+
 export class NvidiaProvider extends BaseAIProvider {
   readonly id = 'nvidia';
   readonly name = 'NVIDIA NIM';
@@ -58,15 +60,19 @@ export class NvidiaProvider extends BaseAIProvider {
   }
 
   async chat(options: AIRequestOptions): Promise<AIResponse> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: options.model,
-        messages: options.messages,
-        temperature: options.temperature,
-        max_tokens: options.maxTokens ?? 1024,
-        stream: false
+        targetUrl: `${this.baseUrl}/chat/completions`,
+        headers: this.getHeaders(),
+        body: {
+          model: options.model,
+          messages: options.messages,
+          temperature: options.temperature,
+          max_tokens: options.maxTokens ?? 1024,
+          stream: false
+        }
       })
     });
 
@@ -89,18 +95,22 @@ export class NvidiaProvider extends BaseAIProvider {
   }
 
   async *chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: {
-        ...this.getHeaders(),
-        'Accept': 'text/event-stream'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: options.model,
-        messages: options.messages,
-        temperature: options.temperature,
-        max_tokens: options.maxTokens ?? 1024,
-        stream: true
+        targetUrl: `${this.baseUrl}/chat/completions`,
+        headers: {
+          ...this.getHeaders(),
+          'Accept': 'text/event-stream'
+        },
+        body: {
+          model: options.model,
+          messages: options.messages,
+          temperature: options.temperature,
+          max_tokens: options.maxTokens ?? 1024,
+          stream: true
+        }
       })
     });
 

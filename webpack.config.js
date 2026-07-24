@@ -85,6 +85,48 @@ module.exports = async (env, options) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
+      setupMiddlewares: (middlewares, devServer) => {
+        if (!devServer) throw new Error('webpack-dev-server is not defined');
+        
+        const express = require('express');
+        devServer.app.post('/api/proxy', express.json(), async (req, res) => {
+          try {
+            const { targetUrl, headers, body } = req.body;
+            if (!targetUrl) return res.status(400).json({ error: 'targetUrl required' });
+
+            const fetchOptions = {
+              method: 'POST',
+              headers: headers || {},
+              body: typeof body === 'string' ? body : JSON.stringify(body),
+            };
+
+            const response = await fetch(targetUrl, fetchOptions);
+            res.status(response.status);
+            
+            response.headers.forEach((value, key) => {
+              const lowerKey = key.toLowerCase();
+              if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding') {
+                res.setHeader(key, value);
+              }
+            });
+
+            if (!response.body) return res.end();
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              res.write(decoder.decode(value));
+            }
+            res.end();
+          } catch (e) {
+            console.error('Proxy dev error:', e);
+            res.status(500).json({ error: e.message });
+          }
+        });
+        return middlewares;
+      },
       server: {
         type: "https",
         options: dev ? await getHttpsOptions() : {},

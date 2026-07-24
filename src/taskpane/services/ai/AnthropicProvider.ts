@@ -1,5 +1,7 @@
 import { BaseAIProvider, AIRequestOptions, AIResponse, AIStreamChunk } from './types';
 
+const PROXY_URL = '/api/proxy';
+
 export class AnthropicProvider extends BaseAIProvider {
   readonly id = 'anthropic';
   readonly name = 'Anthropic Claude';
@@ -45,16 +47,20 @@ export class AnthropicProvider extends BaseAIProvider {
   async chat(options: AIRequestOptions): Promise<AIResponse> {
     const { system, messages } = this.formatMessages(options.messages);
     
-    const response = await fetch(`${this.baseUrl}/messages`, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: options.model,
-        messages: messages,
-        system: system,
-        temperature: options.temperature,
-        max_tokens: options.maxTokens ?? 1024,
-        stream: false
+        targetUrl: `${this.baseUrl}/messages`,
+        headers: this.getHeaders(),
+        body: {
+          model: options.model,
+          messages: messages,
+          system: system,
+          temperature: options.temperature,
+          max_tokens: options.maxTokens ?? 1024,
+          stream: false
+        }
       })
     });
 
@@ -79,19 +85,23 @@ export class AnthropicProvider extends BaseAIProvider {
   async *chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk> {
     const { system, messages } = this.formatMessages(options.messages);
     
-    const response = await fetch(`${this.baseUrl}/messages`, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: {
-        ...this.getHeaders(),
-        'Accept': 'text/event-stream'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: options.model,
-        messages: messages,
-        system: system,
-        temperature: options.temperature,
-        max_tokens: options.maxTokens ?? 1024,
-        stream: true
+        targetUrl: `${this.baseUrl}/messages`,
+        headers: {
+          ...this.getHeaders(),
+          'Accept': 'text/event-stream'
+        },
+        body: {
+          model: options.model,
+          messages: messages,
+          system: system,
+          temperature: options.temperature,
+          max_tokens: options.maxTokens ?? 1024,
+          stream: true
+        }
       })
     });
 

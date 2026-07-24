@@ -5,6 +5,8 @@
  */
 import { BaseAIProvider, AIRequestOptions, AIResponse, AIStreamChunk, parseOpenAISSEStream } from './types';
 
+const PROXY_URL = '/api/proxy';
+
 export class GenericOpenAIProvider extends BaseAIProvider {
   readonly id = 'generic';
   readonly name = 'Custom (OpenAI-compatible)';
@@ -33,16 +35,20 @@ export class GenericOpenAIProvider extends BaseAIProvider {
       headers['X-Title'] = 'Office AI Copilot';
     }
 
-    const response = await fetch(targetUrl, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: options.model,
-        messages: options.messages,
-        temperature: options.temperature ?? 0.7,
-        top_p: 0.7,
-        max_tokens: options.maxTokens ?? 1024,
-        stream: false,
+        targetUrl,
+        headers,
+        body: {
+          model: options.model,
+          messages: options.messages,
+          temperature: options.temperature ?? 0.7,
+          top_p: 0.7,
+          max_tokens: options.maxTokens ?? 1024,
+          stream: false,
+        }
       }),
     });
 
@@ -76,16 +82,20 @@ export class GenericOpenAIProvider extends BaseAIProvider {
       headers['X-Title'] = 'Office AI Copilot';
     }
 
-    const response = await fetch(targetUrl, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: options.model,
-        messages: options.messages,
-        temperature: options.temperature ?? 0.7,
-        top_p: 0.7,
-        max_tokens: options.maxTokens ?? 1024,
-        stream: true,
+        targetUrl,
+        headers,
+        body: {
+          model: options.model,
+          messages: options.messages,
+          temperature: options.temperature ?? 0.7,
+          top_p: 0.7,
+          max_tokens: options.maxTokens ?? 1024,
+          stream: true,
+        }
       }),
     });
 
