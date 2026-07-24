@@ -41,6 +41,9 @@ export class GeminiProvider extends BaseAIProvider {
       maxOutputTokens: options.maxTokens
     };
 
+    // Enable Google Search Grounding natively for Gemini
+    payload.tools = [{ googleSearch: {} }];
+
     return payload;
   }
 

@@ -1,5 +1,5 @@
 // ============================================================
-// Your Co-Pilot — Core Type Definitions
+// Office AI Copilot — Core Type Definitions
 // ============================================================
 
 // ---- AI Provider Types ----
@@ -248,6 +248,11 @@ export type PromptCategory =
   | "presentation"
   | "finance"
   | "general"
+  | "reporting"
+  | "ca"
+  | "compliance-bd"
+  | "audit"
+  | "cross-app"
   | "code"
   | "translate"
   | "accounting";
