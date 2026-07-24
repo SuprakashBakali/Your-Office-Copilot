@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAI } from './useAI';
 import { ExcelService } from '../services/office/ExcelService';
 import { CellData } from '../types';
-import { loadSettings } from '../utils/storage';
+import { useSettings } from './useSettings';
 
 export interface ToolResult {
   content: string;
@@ -19,6 +19,7 @@ export function useExcelTools() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ai = useAI();
+  const { settings } = useSettings();
 
   /**
    * Run a tool: reads Excel context, combines with a prompt, sends to AI
@@ -90,7 +91,6 @@ export function useExcelTools() {
         { id: 'usr', role: 'user' as const, content: userPrompt, timestamp: Date.now() },
       ];
 
-      const settings = loadSettings();
       let response = '';
 
       if (settings.streamResponses) {
@@ -110,7 +110,7 @@ export function useExcelTools() {
       setIsLoading(false);
       throw err;
     }
-  }, [ai]);
+  }, [ai, settings]);
 
   /**
    * Get the currently selected data from Excel

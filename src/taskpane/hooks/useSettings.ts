@@ -7,6 +7,12 @@ export function useSettings() {
 
   useEffect(() => {
     setSettingsState(loadSettings());
+
+    const handleSettingsUpdate = () => {
+      setSettingsState(loadSettings());
+    };
+    window.addEventListener('settingsUpdated', handleSettingsUpdate);
+    return () => window.removeEventListener('settingsUpdated', handleSettingsUpdate);
   }, []);
 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
@@ -14,11 +20,13 @@ export function useSettings() {
     const updated = { ...current, ...newSettings };
     saveSettings(updated);
     setSettingsState(updated);
+    window.dispatchEvent(new Event('settingsUpdated'));
   }, []);
 
   const resetSettings = useCallback(() => {
     saveSettings(DEFAULT_SETTINGS);
     setSettingsState(DEFAULT_SETTINGS);
+    window.dispatchEvent(new Event('settingsUpdated'));
   }, []);
 
   const getApiKey = useCallback((provider?: AIProviderType) => {
@@ -32,6 +40,7 @@ export function useSettings() {
     const updated = { ...current, apiKeys: updatedKeys };
     saveSettings(updated);
     setSettingsState(updated);
+    window.dispatchEvent(new Event('settingsUpdated'));
   }, []);
 
   return {

@@ -7,7 +7,7 @@ import {
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
 import { useAI } from '../../hooks/useAI';
-import { loadSettings } from '../../utils/storage';
+import { useSettings } from '../../hooks/useSettings';
 import { ChatMessage } from '../../types';
 
 const PPT_SYSTEM_PROMPT = `You are a professional presentation assistant integrated into Microsoft PowerPoint. Help users create, improve, and polish their slides and speaker notes. Use concise, impactful language suitable for presentations. Format your responses using Markdown.`;
@@ -115,6 +115,7 @@ export const PowerPointPanel: React.FC = () => {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [customTopic, setCustomTopic] = useState('');
   const ai = useAI();
+  const { settings } = useSettings();
 
   const runTool = useCallback(async (toolId: string) => {
     const tool = PPT_TOOLS.find(t => t.id === toolId);
@@ -140,7 +141,6 @@ export const PowerPointPanel: React.FC = () => {
         { id: 'usr', role: 'user', content: tool.prompt, timestamp: Date.now() },
       ];
 
-      const settings = loadSettings();
       let response = '';
 
       if (settings.streamResponses) {
@@ -178,7 +178,6 @@ export const PowerPointPanel: React.FC = () => {
         },
       ];
 
-      const settings = loadSettings();
       let response = '';
 
       if (settings.streamResponses) {

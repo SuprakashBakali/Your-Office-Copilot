@@ -4,7 +4,7 @@ import { DismissRegular } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
 import { useAI } from '../../hooks/useAI';
-import { loadSettings } from '../../utils/storage';
+import { useSettings } from '../../hooks/useSettings';
 import { ChatMessage } from '../../types';
 
 const useStyles = makeStyles({
@@ -41,6 +41,7 @@ export const WritingTools: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ai = useAI();
+  const { settings } = useSettings();
 
   const handleRewrite = useCallback(async () => {
     setIsLoading(true);
@@ -63,8 +64,6 @@ export const WritingTools: React.FC = () => {
         { id: 'sys', role: 'system', content: systemPrompt, timestamp: 0 },
         { id: 'usr', role: 'user', content: userPrompt, timestamp: Date.now() },
       ];
-
-      const settings = loadSettings();
 
       if (settings.streamResponses) {
         await ai.sendMessageStream(messages, {}, (chunk) => {

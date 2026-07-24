@@ -91,7 +91,7 @@ interface MessageBubbleProps {
   onApplyToExcel?: (content: string) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRegenerate, onApplyToExcel }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message, onRegenerate, onApplyToExcel }) => {
   const classes = useStyles();
   const isUser = message.role === 'user';
   const isError = message.content.startsWith('⚠️');
@@ -160,4 +160,4 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRegener
       </div>
     </div>
   );
-};
+});

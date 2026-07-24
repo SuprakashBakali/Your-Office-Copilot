@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { AIProviderType, ChatMessage } from '../types';
-import { loadSettings } from '../utils/storage';
+import { useSettings } from './useSettings';
 import { getProvider } from '../services/ai/ProviderFactory';
 import { GenericOpenAIProvider } from '../services/ai/GenericOpenAIProvider';
 import { AIRequestOptions } from '../services/ai/types';
@@ -9,6 +9,8 @@ export function useAI() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStreamText, setCurrentStreamText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [streamedResponse, setStreamedResponse] = useState('');
+  const { settings } = useSettings();
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamTextRef = useRef<string>("");
 
@@ -16,8 +18,6 @@ export function useAI() {
     try {
       setIsStreaming(true);
       setError(null);
-
-      const settings = loadSettings();
 
       // Resolve provider + key from the active custom model (if any)
       const activeCustomModel = (settings.customModels || []).find(
@@ -57,7 +57,7 @@ export function useAI() {
       setError(msg);
       throw err;
     }
-  }, []);
+  }, [settings]);
 
   const sendMessageStream = useCallback(async (
     messages: ChatMessage[],
@@ -71,8 +71,6 @@ export function useAI() {
       streamTextRef.current = "";
 
       abortControllerRef.current = new AbortController();
-
-      const settings = loadSettings();
 
       // Resolve provider + key from the active custom model (if any)
       const activeCustomModel = (settings.customModels || []).find(
@@ -131,7 +129,7 @@ export function useAI() {
       }
       return streamTextRef.current;
     }
-  }, []);
+  }, [settings]);
 
   const cancelStream = useCallback(() => {
     if (abortControllerRef.current) {

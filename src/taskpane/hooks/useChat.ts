@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ChatMessage, ChatConversation, OfficeHostType } from '../types';
-import { loadConversations, saveConversations, generateId, loadSettings } from '../utils/storage';
+import { useSettings } from './useSettings';
+import { loadConversations, saveConversations, generateId } from '../utils/storage';
 import { useAI } from './useAI';
 import { ExcelService } from '../services/office/ExcelService';
 
@@ -236,6 +237,7 @@ export function useChat(hostApp: OfficeHostType) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const ai = useAI();
+  const { settings } = useSettings();
 
   useEffect(() => {
     const loaded = loadConversations();
@@ -287,8 +289,6 @@ export function useChat(hostApp: OfficeHostType) {
         console.warn('Failed to get Office context:', err);
       }
     }
-
-    const settings = loadSettings();
 
     // Build system prompt — tell the AI it can directly modify Excel via EXCEL_CMD blocks
     const excelCommandDocs = hostApp === 'Excel' ? `

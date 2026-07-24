@@ -7,7 +7,7 @@ import {
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
 import { useAI } from '../../hooks/useAI';
-import { loadSettings } from '../../utils/storage';
+import { useSettings } from '../../hooks/useSettings';
 import { ChatMessage } from '../../types';
 
 const WORD_SYSTEM_PROMPT = `You are a professional writing assistant integrated into Microsoft Word. Help users rewrite, summarise, proofread, and draft content. Always maintain the original meaning unless told otherwise. Format your responses using Markdown.`;
@@ -114,6 +114,7 @@ export const WordPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const ai = useAI();
+  const { settings } = useSettings();
 
   const handleAction = useCallback(async (toolId: string) => {
     const tool = WORD_TOOLS.find(t => t.id === toolId);
@@ -140,7 +141,6 @@ export const WordPanel: React.FC = () => {
         { id: 'usr', role: 'user', content: tool.prompt, timestamp: Date.now() },
       ];
 
-      const settings = loadSettings();
       let response = '';
 
       if (settings.streamResponses) {

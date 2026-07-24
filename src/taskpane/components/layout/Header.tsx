@@ -3,7 +3,7 @@ import { Button, makeStyles, tokens, Text, Tooltip, Badge } from '@fluentui/reac
 import { Settings24Regular, WeatherSunny24Regular, WeatherMoon24Regular, Bot24Regular } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 import { useTheme } from '../../hooks/useTheme';
-import { loadSettings } from '../../utils/storage';
+import { useSettings } from '../../hooks/useSettings';
 import { PROVIDER_CONFIGS } from '../../services/ai/ProviderFactory';
 
 const useStyles = makeStyles({
@@ -77,7 +77,7 @@ export const Header: React.FC = () => {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const { isDark, toggleTheme } = useTheme();
-  const settings = loadSettings();
+  const { settings } = useSettings();
   const providerConfig = PROVIDER_CONFIGS[settings.activeProvider];
 
   const hostLabel = state.host === 'Unknown' ? 'Excel' : state.host;
@@ -89,7 +89,7 @@ export const Header: React.FC = () => {
           <Bot24Regular />
         </div>
         <div className={classes.titleText}>
-          <Text className={classes.title}>Your Co-Pilot</Text>
+          <Text className={classes.title}>AI Copilot</Text>
           <span className={classes.subtitle}>
             <span className={classes.providerDot} style={{ backgroundColor: providerConfig?.color || '#76B900' }} />
             {providerConfig?.name || 'NVIDIA NIM'} · {hostLabel}

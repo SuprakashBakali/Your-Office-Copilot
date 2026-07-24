@@ -14,7 +14,7 @@ import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { EmptyState } from '../shared/EmptyState';
 import { LoadingDots } from '../shared/LoadingDots';
-import { loadSettings } from '../../utils/storage';
+import { useSettings } from '../../hooks/useSettings';
 
 const useStyles = makeStyles({
   container: {
@@ -81,7 +81,7 @@ export const ChatPanel: React.FC = () => {
   const { isStreaming, cancelStream } = useAI();
   const messageListRef = useRef<HTMLDivElement>(null);
   const [includeContext, setIncludeContext] = useState(true);
-  const settings = useMemo(() => loadSettings(), [messages.length]);
+  const { settings } = useSettings();
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -90,15 +90,15 @@ export const ChatPanel: React.FC = () => {
     }
   }, [messages, isStreaming]);
 
-  const handleSend = (text: string) => {
+  const handleSend = React.useCallback((text: string) => {
     sendChatMessage(text, includeContext);
-  };
+  }, [sendChatMessage, includeContext]);
 
-  const handleExport = (format: 'txt' | 'json' | 'markdown') => {
+  const handleExport = React.useCallback((format: 'txt' | 'json' | 'markdown') => {
     if (activeConversation) {
       exportConversation(activeConversation.id, format);
     }
-  };
+  }, [activeConversation, exportConversation]);
 
   return (
     <div className={classes.container}>
@@ -157,7 +157,7 @@ export const ChatPanel: React.FC = () => {
         {messages.length === 0 ? (
           <EmptyState
             icon={<ChatRegular />}
-            title="Welcome to Your Co-Pilot"
+            title="Welcome to AI Copilot"
             description={`Chat with your ${host} workbook. Ask questions, analyze data, generate formulas, and more.`}
             actionText="Start a new chat"
             onAction={createConversation}
