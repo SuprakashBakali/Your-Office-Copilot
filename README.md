@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.jpg" alt="Your Co-Pilot" width="128" height="128" style="border-radius: 24px;" />
+  <img src="assets/icon.jpg" alt="Office AI Copilot" width="128" height="128" style="border-radius: 24px;" />
 </p>
 
-<h1 align="center">Your Co-Pilot</h1>
+<h1 align="center">Office AI Copilot</h1>
 
 <p align="center">
   <strong>Your AI-powered assistant for Excel, Word & PowerPoint — powered by 7 AI providers</strong>
@@ -17,20 +17,20 @@
 </p>
 
 <p align="center">
-  <img src="assets/preview.jpg" alt="Your Co-Pilot Preview" width="350" />
+  <img src="assets/preview.jpg" alt="Office AI Copilot Preview" width="350" />
 </p>
 
 ---
 
 ## 🌟 What is this?
 
-**Your Co-Pilot** is a free, open-source alternative to Microsoft Copilot that runs as a sidebar add-in inside Excel, Word, and PowerPoint. It connects to **7 AI providers** (including free ones) and gives you AI superpowers for spreadsheets, documents, and presentations.
+**Office AI Copilot** is a free, open-source alternative to Microsoft Copilot that runs as a sidebar add-in inside Excel, Word, and PowerPoint. It connects to **7 AI providers** (including free ones) and gives you AI superpowers for spreadsheets, documents, and presentations.
 
 > **🔒 Privacy First:** Your API keys are stored locally in your browser. Your data is sent _only_ to the AI provider you choose — never to any third-party server.
 
 ### Why use this instead of Microsoft Copilot?
 
-| Feature | Microsoft Copilot | Your Co-Pilot |
+| Feature | Microsoft Copilot | Office AI Copilot |
 |---------|:-----------------:|:-----------------:|
 | Price | $30/month | **Free** |
 | AI Provider | GPT-4 only | **7 providers** (you choose) |
@@ -48,35 +48,29 @@
 
 ## ✨ Features
 
+### ⚡ Automated Copilot Actions (NEW)
+The AI doesn't just give you text—it **directly manipulates** your documents in the background using invisible commands!
+- **Excel:** Automatically write formulas, format cells, create charts, insert pivot tables, remove duplicates, apply filters, and group data.
+- **Word:** Automatically insert formatted tables, inject paragraphs, apply styles (e.g., 'Heading 1'), clear messy formatting, and perform mass search-and-replace.
+- **PowerPoint:** Automatically add blank slides, inject custom text boxes, generate geometric shapes, and format colors.
+
 ### 🤖 AI Chat
 - Chat with your workbook, document, or presentation
 - Streaming responses (text appears word-by-word)
 - Conversation history with export
-- 50+ built-in prompt templates
 - Context-aware — AI sees your selected cells/text
 
-### 📊 Excel Tools (6 categories)
-| Category | Tools |
-|----------|-------|
-| **📈 Analysis** | Statistical summary, trend analysis, outlier detection, correlation, KPI analysis |
-| **🔢 Formulas** | Generate from English, explain formulas, detect errors, convert formula ↔ English |
-| **📉 Charts** | Smart chart recommendations, auto-create charts, dashboard suggestions |
-| **💰 Finance** | Financial ratios, journal entries, IAS/IFRS terms, depreciation, cash flow |
-| **🧹 Cleaning** | Duplicates, missing values, format standardization, data normalization |
-| **💻 Code Gen** | VBA macros, Power Query (M), Office Scripts, Apps Script |
+### 📊 Excel Specific Tools
+- **Data & Visualization:** Statistical summaries, trend analysis, auto-create charts, sparklines, conditional formatting.
+- **Formulas & Code:** Generate/explain complex formulas, generate VBA macros and Power Query scripts.
+- **Finance & Cleaning:** Financial ratios, depreciation, deduplication, missing values, formatting.
 
-### 📝 Word Tools
-- **Rewrite** — adjust tone, style, and length
-- **Summarize** — executive summaries from any document
-- **Grammar** — deep proofreading with explanations
-- **Expand/Shorten** — adjust content length intelligently
-- **Draft Email** — turn notes into professional correspondence
+### 📝 Word Specific Tools
+- **Rewrite & Summarize:** Adjust tone/style, extract executive summaries.
+- **Grammar & Expansion:** Deep proofreading, adjust content length intelligently.
 
-### 🎯 PowerPoint Tools
-- **Improve Slides** — make text more impactful
-- **Speaker Notes** — auto-generate natural scripts
-- **Slide Outline** — create presentation structure from topics
-- **Q&A Prep** — prepare for audience questions
+### 🎯 PowerPoint Specific Tools
+- **Content Generation:** Auto-generate speaker notes, create slide outlines, prepare for Q&A.
 
 ---
 
@@ -116,7 +110,7 @@ git push -u origin main
 
 Then:
 1. Go to [vercel.com](https://vercel.com) → **Add New Project** → select your repo → **Deploy**
-2. Copy your Vercel URL (e.g. `https://your-office-copilot.vercel.app`)
+2. Copy your Vercel URL (e.g. `https://office-ai-copilot.vercel.app`)
 3. Update the URLs in `manifests/*.xml` (replace `https://localhost:3000` with your Vercel URL)
 4. In Excel/Word/PowerPoint: **Insert → Add-ins → Upload My Add-in** → upload the XML
 
