@@ -317,31 +317,46 @@ export const CustomModelManager: React.FC = () => {
     setIsTestingAll(true);
     setTestRankings([]);
     
-    const results = await Promise.all(models.map(async (model) => {
+    let pending = models.length;
+    if (pending === 0) {
+      setIsTestingAll(false);
+      return;
+    }
+
+    models.forEach(async (model) => {
+      let result;
       if (!model.apiKey || !model.modelId) {
-        return { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: 'Missing API Key or Model ID' };
+        result = { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: 'Missing API Key or Model ID' };
+      } else {
+        const start = performance.now();
+        try {
+          const provider = model.baseUrl ? new GenericOpenAIProvider(model.baseUrl, model.apiKey) : getProvider(model.provider);
+          if (!model.baseUrl) provider.setApiKey(model.apiKey);
+          
+          await provider.chat({
+            model: model.modelId,
+            messages: [{ role: 'user', content: 'Hi' }],
+            maxTokens: 5,
+            stream: false,
+          });
+          const end = performance.now();
+          result = { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
+        } catch (e) {
+          const end = performance.now();
+          result = { id: model.id, name: model.name, latency: Math.round(end - start), status: 'error' as const, error: (e as Error).message };
+        }
       }
-      const start = performance.now();
-      try {
-        const provider = model.baseUrl ? new GenericOpenAIProvider(model.baseUrl, model.apiKey) : getProvider(model.provider);
-        if (!model.baseUrl) provider.setApiKey(model.apiKey);
-        
-        await provider.chat({
-          model: model.modelId,
-          messages: [{ role: 'user', content: 'Hi' }],
-          maxTokens: 5,
-          stream: false,
-        });
-        const end = performance.now();
-        return { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
-      } catch (e) {
-        const end = performance.now();
-        return { id: model.id, name: model.name, latency: Math.round(end - start), status: 'error' as const, error: (e as Error).message };
+      
+      setTestRankings(prev => {
+        const next = [...prev, result];
+        return next.sort((a, b) => a.latency - b.latency);
+      });
+      
+      pending--;
+      if (pending === 0) {
+        setIsTestingAll(false);
       }
-    }));
-    
-    setTestRankings(results.sort((a, b) => a.latency - b.latency));
-    setIsTestingAll(false);
+    });
   };
 
   return (
