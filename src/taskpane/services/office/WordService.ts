@@ -74,6 +74,62 @@ export class WordService {
     });
   }
 
+  static async insertTable(values: string[][], location: 'before'|'after'|'end'): Promise<void> {
+    return Word.run(async (context) => {
+      const doc = context.document;
+      let target: any = doc.body;
+      let wordLoc = Word.InsertLocation.end;
+      
+      if (location !== 'end') {
+        target = doc.getSelection();
+        wordLoc = location === 'before' ? Word.InsertLocation.before : Word.InsertLocation.after;
+      }
+      
+      target.insertTable(values.length, values[0].length, wordLoc, values);
+      await context.sync();
+    });
+  }
+
+  static async formatText(opts: { bold?: boolean; italic?: boolean; color?: string; size?: number }): Promise<void> {
+    return Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      if (opts.bold !== undefined) selection.font.bold = opts.bold;
+      if (opts.italic !== undefined) selection.font.italic = opts.italic;
+      if (opts.color) selection.font.color = opts.color;
+      if (opts.size) selection.font.size = opts.size;
+      await context.sync();
+    });
+  }
+
+  static async applyStyle(styleName: string): Promise<void> {
+    return Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.style = styleName;
+      await context.sync();
+    });
+  }
+
+  static async clearFormatting(): Promise<void> {
+    return Word.run(async (context) => {
+      const selection = context.document.getSelection();
+      selection.font.clear();
+      await context.sync();
+    });
+  }
+
+  static async searchReplace(findText: string, replaceText: string): Promise<void> {
+    return Word.run(async (context) => {
+      const searchResults = context.document.body.search(findText, { matchCase: false, matchWholeWord: false });
+      searchResults.load('items');
+      await context.sync();
+
+      for (let i = 0; i < searchResults.items.length; i++) {
+        searchResults.items[i].insertText(replaceText, Word.InsertLocation.replace);
+      }
+      await context.sync();
+    });
+  }
+
   static async getContextForAI(maxChars: number = 5000): Promise<string> {
     try {
       const selection = await this.getSelectedText();

@@ -57,8 +57,46 @@ export class PowerPointService {
     }
   }
 
+  static async addTextbox(text: string): Promise<void> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(0);
+        slide.shapes.addTextBox(text);
+        await context.sync();
+      });
+    } else {
+      throw new Error("Adding textboxes requires PowerPointApi 1.4+.");
+    }
+  }
+
+  static async addShape(shapeType: string): Promise<void> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(0);
+        slide.shapes.addGeometricShape(shapeType as any);
+        await context.sync();
+      });
+    } else {
+      throw new Error("Adding shapes requires PowerPointApi 1.4+.");
+    }
+  }
+
+  static async formatShape(shapeIndex: number, fillColor?: string, fontColor?: string): Promise<void> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(0);
+        const shape = slide.shapes.getItemAt(shapeIndex);
+        if (fillColor) shape.fill.setSolidColor(fillColor);
+        if (fontColor) shape.textFrame.textRange.font.color = fontColor;
+        await context.sync();
+      });
+    } else {
+      throw new Error("Formatting shapes requires PowerPointApi 1.4+.");
+    }
+  }
+
   static async setSlideNotes(notes: string): Promise<void> {
-    throw new Error("Setting slide notes requires newer PowerPoint API, not fully implemented.");
+    throw new Error("Setting slide notes requires newer PowerPoint API, not fully implemented in Office JS yet.");
   }
 
   static async getContextForAI(): Promise<string> {

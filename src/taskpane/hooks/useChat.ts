@@ -84,6 +84,54 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.addConditionalFormatting(cmd.range, cmd.type);
           results.executed++;
           break;
+        case 'remove_duplicates':
+          await ExcelService.removeDuplicates(cmd.range, cmd.columns);
+          results.executed++;
+          break;
+        case 'trim_whitespace':
+          await ExcelService.trimWhitespace(cmd.range);
+          results.executed++;
+          break;
+        case 'change_case':
+          await ExcelService.changeCase(cmd.range, cmd.type);
+          results.executed++;
+          break;
+        case 'remove_blank_rows':
+          await ExcelService.removeBlankRows(cmd.range);
+          results.executed++;
+          break;
+        case 'apply_filter':
+          await ExcelService.applyFilter(cmd.range, cmd.column_index, cmd.criteria);
+          results.executed++;
+          break;
+        case 'clear_filter':
+          await ExcelService.clearFilter();
+          results.executed++;
+          break;
+        case 'group_data':
+          await ExcelService.groupData(cmd.range, cmd.by_rows);
+          results.executed++;
+          break;
+        case 'ungroup_data':
+          await ExcelService.ungroupData(cmd.range, cmd.by_rows);
+          results.executed++;
+          break;
+        case 'add_sparklines':
+          await ExcelService.addSparklines(cmd.range, cmd.source_range, cmd.type);
+          results.executed++;
+          break;
+        case 'format_chart':
+          await ExcelService.formatChart(cmd.chart_name, cmd.options);
+          results.executed++;
+          break;
+        case 'highlight_duplicates':
+          await ExcelService.highlightDuplicates(cmd.range, cmd.color);
+          results.executed++;
+          break;
+        case 'highlight_top_bottom':
+          await ExcelService.highlightTopBottom(cmd.range, cmd.type, cmd.count, cmd.color);
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown action: ${cmd.action}`);
       }
@@ -94,9 +142,93 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
   return results;
 }
 
-/** Strip <EXCEL_CMD>...</EXCEL_CMD> blocks from displayed text */
+// ---- Word Command Execution ----
+export async function executeWordCommands(text: string): Promise<ExcelCmdResult> {
+  const results: ExcelCmdResult = { executed: 0, errors: [] };
+  const cmdRegex = /<WORD_CMD>([\/\s\S]*?)<\/WORD_CMD>/g;
+  let match;
+  while ((match = cmdRegex.exec(text)) !== null) {
+    try {
+      const cmd = JSON.parse(match[1].trim());
+      const { WordService } = await import('../services/office/WordService');
+      switch (cmd.action) {
+        case 'insert_table':
+          await WordService.insertTable(cmd.values, cmd.location || 'end');
+          results.executed++;
+          break;
+        case 'insert_paragraph':
+          await WordService.insertParagraph(cmd.text, cmd.location || 'after');
+          results.executed++;
+          break;
+        case 'format_text':
+          await WordService.formatText(cmd.options);
+          results.executed++;
+          break;
+        case 'apply_style':
+          await WordService.applyStyle(cmd.style);
+          results.executed++;
+          break;
+        case 'clear_formatting':
+          await WordService.clearFormatting();
+          results.executed++;
+          break;
+        case 'search_replace':
+          await WordService.searchReplace(cmd.find_text, cmd.replace_text);
+          results.executed++;
+          break;
+        default:
+          results.errors.push(`Unknown Word action: ${cmd.action}`);
+      }
+    } catch (e) {
+      results.errors.push((e as Error).message);
+    }
+  }
+  return results;
+}
+
+// ---- PPT Command Execution ----
+export async function executePPTCommands(text: string): Promise<ExcelCmdResult> {
+  const results: ExcelCmdResult = { executed: 0, errors: [] };
+  const cmdRegex = /<PPT_CMD>([\/\s\S]*?)<\/PPT_CMD>/g;
+  let match;
+  while ((match = cmdRegex.exec(text)) !== null) {
+    try {
+      const cmd = JSON.parse(match[1].trim());
+      const { PowerPointService } = await import('../services/office/PowerPointService');
+      switch (cmd.action) {
+        case 'add_slide':
+          await PowerPointService.addSlide();
+          results.executed++;
+          break;
+        case 'add_textbox':
+          await PowerPointService.addTextbox(cmd.text);
+          results.executed++;
+          break;
+        case 'add_shape':
+          await PowerPointService.addShape(cmd.shape_type);
+          results.executed++;
+          break;
+        case 'format_shape':
+          await PowerPointService.formatShape(cmd.shape_index, cmd.fill_color, cmd.font_color);
+          results.executed++;
+          break;
+        case 'set_slide_notes':
+          await PowerPointService.setSlideNotes(cmd.notes);
+          results.executed++;
+          break;
+        default:
+          results.errors.push(`Unknown PPT action: ${cmd.action}`);
+      }
+    } catch (e) {
+      results.errors.push((e as Error).message);
+    }
+  }
+  return results;
+}
+
+/** Strip <*_CMD>...</*_CMD> blocks from displayed text */
 export function cleanResponseText(text: string): string {
-  return text.replace(/<EXCEL_CMD>[\/\s\S]*?<\/EXCEL_CMD>/g, '').trim();
+  return text.replace(/<(EXCEL|WORD|PPT)_CMD>[\/\s\S]*?<\/\1_CMD>/g, '').trim();
 }
 
 export function useChat(hostApp: OfficeHostType) {
@@ -183,6 +315,18 @@ Available actions:
 - Find & Replace:  <EXCEL_CMD>{"action":"find_replace","range":"A1:Z100","find_text":"USA","replace_text":"United States"}</EXCEL_CMD>
 - Data Validation: <EXCEL_CMD>{"action":"add_data_validation","range":"B2:B100","source_list":"Yes,No,Maybe"}</EXCEL_CMD>
 - Cond. Format:    <EXCEL_CMD>{"action":"add_conditional_formatting","range":"C2:C100","type":"colorScale"}</EXCEL_CMD>
+- Remove Duplicates: <EXCEL_CMD>{"action":"remove_duplicates","range":"A1:C100","columns":[0, 1]}</EXCEL_CMD>
+- Trim Whitespace: <EXCEL_CMD>{"action":"trim_whitespace","range":"A1:A100"}</EXCEL_CMD>
+- Change Case:     <EXCEL_CMD>{"action":"change_case","range":"A1:A100","type":"upper"}</EXCEL_CMD>
+- Remove Blanks:   <EXCEL_CMD>{"action":"remove_blank_rows","range":"A1:D100"}</EXCEL_CMD>
+- Apply Filter:    <EXCEL_CMD>{"action":"apply_filter","range":"A1:D100","column_index":0,"criteria":["USA","Canada"]}</EXCEL_CMD>
+- Clear Filter:    <EXCEL_CMD>{"action":"clear_filter"}</EXCEL_CMD>
+- Group Data:      <EXCEL_CMD>{"action":"group_data","range":"A2:A10","by_rows":true}</EXCEL_CMD>
+- Ungroup Data:    <EXCEL_CMD>{"action":"ungroup_data","range":"A2:A10","by_rows":true}</EXCEL_CMD>
+- Add Sparklines:  <EXCEL_CMD>{"action":"add_sparklines","range":"E2:E10","source_range":"B2:D10","type":"line"}</EXCEL_CMD>
+- Format Chart:    <EXCEL_CMD>{"action":"format_chart","chart_name":"Chart1","options":{"title":"Sales","showDataLabels":true,"legendPosition":"bottom"}}</EXCEL_CMD>
+- HL Duplicates:   <EXCEL_CMD>{"action":"highlight_duplicates","range":"A1:A100","color":"pink"}</EXCEL_CMD>
+- HL Top/Bottom:   <EXCEL_CMD>{"action":"highlight_top_bottom","range":"B1:B100","type":"top","count":10,"color":"lightgreen"}</EXCEL_CMD>
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
@@ -191,7 +335,42 @@ Rules:
 - If the cell address is ambiguous, use the most likely one based on context.
 - Never ask the user to do it manually if you can do it with an EXCEL_CMD block.` : '';
 
-    const systemPrompt = `You are an Your Co-Pilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
+    const wordCommandDocs = hostApp === 'Word' ? `
+
+You can directly modify the user's Word document by emitting WORD_CMD blocks in your response.
+When the user asks you to write, insert, format, or restructure the document, ALWAYS emit a WORD_CMD block to do it automatically.
+
+Available actions:
+- Insert Paragraph: <WORD_CMD>{"action":"insert_paragraph","text":"Hello World","location":"after"}</WORD_CMD> (location: before, after)
+- Insert Table:     <WORD_CMD>{"action":"insert_table","values":[["Header1","Header2"],["Row1Col1","Row1Col2"]],"location":"end"}</WORD_CMD> (location: before, after, end)
+- Format Text:      <WORD_CMD>{"action":"format_text","options":{"bold":true,"italic":false,"color":"#FF0000","size":14}}</WORD_CMD>
+- Apply Style:      <WORD_CMD>{"action":"apply_style","style":"Heading1"}</WORD_CMD>
+- Clear Formatting: <WORD_CMD>{"action":"clear_formatting"}</WORD_CMD>
+- Search & Replace: <WORD_CMD>{"action":"search_replace","find_text":"old word","replace_text":"new word"}</WORD_CMD>
+
+Rules:
+- ALWAYS emit a WORD_CMD block when the user asks you to put/type/write/insert/format data in Word.
+- You can emit multiple WORD_CMD blocks in one response.
+- After each block, briefly confirm what you did.` : '';
+
+    const pptCommandDocs = hostApp === 'PowerPoint' ? `
+
+You can directly modify the user's PowerPoint presentation by emitting PPT_CMD blocks in your response.
+When the user asks you to add slides, shapes, text, or notes, ALWAYS emit a PPT_CMD block to do it automatically.
+
+Available actions:
+- Add Slide:       <PPT_CMD>{"action":"add_slide"}</PPT_CMD>
+- Add Textbox:     <PPT_CMD>{"action":"add_textbox","text":"Hello World"}</PPT_CMD>
+- Add Shape:       <PPT_CMD>{"action":"add_shape","shape_type":"Rectangle"}</PPT_CMD>
+- Format Shape:    <PPT_CMD>{"action":"format_shape","shape_index":0,"fill_color":"#FF0000","font_color":"#FFFFFF"}</PPT_CMD>
+- Set Notes:       <PPT_CMD>{"action":"set_slide_notes","notes":"Speaker notes go here."}</PPT_CMD>
+
+Rules:
+- ALWAYS emit a PPT_CMD block when the user asks you to add slides/shapes/text in PowerPoint.
+- You can emit multiple PPT_CMD blocks in one response.
+- After each block, briefly confirm what you did.` : '';
+
+    const systemPrompt = `You are an AI Copilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${wordCommandDocs}${pptCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
 
     // Ensure we have an active conversation
     let convId = activeConversationId;
@@ -281,9 +460,13 @@ Rules:
           }));
         });
 
-        // Final save — execute Excel commands then clean response
+        // Final save — execute commands then clean response
         if (hostApp === 'Excel') {
           try { await executeExcelCommands(fullResponse); } catch {}
+        } else if (hostApp === 'Word') {
+          try { await executeWordCommands(fullResponse); } catch {}
+        } else if (hostApp === 'PowerPoint') {
+          try { await executePPTCommands(fullResponse); } catch {}
         }
         const displayText = cleanResponseText(fullResponse);
         const finalConvs = currentConvs.map(c => {
@@ -299,10 +482,14 @@ Rules:
         });
         saveConversations(finalConvs);
       } else {
-        // Non-streaming mode — execute Excel commands then clean response
+        // Non-streaming mode — execute commands then clean response
         const response = await ai.sendMessage(aiMessages);
         if (hostApp === 'Excel') {
           try { await executeExcelCommands(response); } catch {}
+        } else if (hostApp === 'Word') {
+          try { await executeWordCommands(response); } catch {}
+        } else if (hostApp === 'PowerPoint') {
+          try { await executePPTCommands(response); } catch {}
         }
         const displayText = cleanResponseText(response);
         currentConvs = currentConvs.map(c => {
