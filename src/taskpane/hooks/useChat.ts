@@ -2,6 +2,46 @@ import { useState, useCallback, useEffect } from 'react';
 import { ChatMessage, ChatConversation, OfficeHostType } from '../types';
 import { loadConversations, saveConversations, generateId, loadSettings } from '../utils/storage';
 import { useAI } from './useAI';
+import { ExcelService } from '../services/office/ExcelService';
+
+// ---- Excel Command Execution ----
+
+export interface ExcelCmdResult { executed: number; errors: string[]; }
+
+export async function executeExcelCommands(text: string): Promise<ExcelCmdResult> {
+  const results: ExcelCmdResult = { executed: 0, errors: [] };
+  const cmdRegex = /<EXCEL_CMD>([\/\s\S]*?)<\/EXCEL_CMD>/g;
+  let match;
+  while ((match = cmdRegex.exec(text)) !== null) {
+    try {
+      const cmd = JSON.parse(match[1].trim());
+      switch (cmd.action) {
+        case 'write_cell':
+          await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);
+          results.executed++;
+          break;
+        case 'write_formula':
+          await ExcelService.insertFormula(cmd.cell, cmd.formula);
+          results.executed++;
+          break;
+        case 'write_range':
+          await ExcelService.writeToRange(cmd.range, cmd.values);
+          results.executed++;
+          break;
+        default:
+          results.errors.push(`Unknown action: ${cmd.action}`);
+      }
+    } catch (e) {
+      results.errors.push((e as Error).message);
+    }
+  }
+  return results;
+}
+
+/** Strip <EXCEL_CMD>...</EXCEL_CMD> blocks from displayed text */
+export function cleanResponseText(text: string): string {
+  return text.replace(/<EXCEL_CMD>[\/\s\S]*?<\/EXCEL_CMD>/g, '').trim();
+}
 
 export function useChat(hostApp: OfficeHostType) {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -61,7 +101,26 @@ export function useChat(hostApp: OfficeHostType) {
     }
 
     const settings = loadSettings();
-    const systemPrompt = `You are an AI Copilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
+
+    // Build system prompt — tell the AI it can directly modify Excel via EXCEL_CMD blocks
+    const excelCommandDocs = hostApp === 'Excel' ? `
+
+You can directly modify the user's Excel spreadsheet by emitting EXCEL_CMD blocks in your response.
+When the user asks you to write, type, insert, or change data in a cell or range, ALWAYS emit an EXCEL_CMD block to do it automatically.
+
+Available actions:
+- Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World"}</EXCEL_CMD>
+- Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)"}</EXCEL_CMD>
+- Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]]}</EXCEL_CMD>
+
+Rules:
+- ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.
+- You can emit multiple EXCEL_CMD blocks in one response.
+- After each block, briefly confirm what you did (e.g. "I've written 'Hello World' to cell G4.").
+- If the cell address is ambiguous, use the most likely one based on context.
+- Never ask the user to do it manually if you can do it with an EXCEL_CMD block.` : '';
+
+    const systemPrompt = `You are an AI Copilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
 
     // Ensure we have an active conversation
     let convId = activeConversationId;
@@ -151,13 +210,17 @@ export function useChat(hostApp: OfficeHostType) {
           }));
         });
 
-        // Final save
+        // Final save — execute Excel commands then clean response
+        if (hostApp === 'Excel') {
+          try { await executeExcelCommands(fullResponse); } catch {}
+        }
+        const displayText = cleanResponseText(fullResponse);
         const finalConvs = currentConvs.map(c => {
           if (c.id === convId) {
             return {
               ...c,
               messages: c.messages.map(m =>
-                m.id === assistantMsgId ? { ...m, content: fullResponse } : m
+                m.id === assistantMsgId ? { ...m, content: displayText } : m
               ),
             };
           }
@@ -165,14 +228,18 @@ export function useChat(hostApp: OfficeHostType) {
         });
         saveConversations(finalConvs);
       } else {
-        // Non-streaming mode
+        // Non-streaming mode — execute Excel commands then clean response
         const response = await ai.sendMessage(aiMessages);
+        if (hostApp === 'Excel') {
+          try { await executeExcelCommands(response); } catch {}
+        }
+        const displayText = cleanResponseText(response);
         currentConvs = currentConvs.map(c => {
           if (c.id === convId) {
             return {
               ...c,
               messages: c.messages.map(m =>
-                m.id === assistantMsgId ? { ...m, content: response } : m
+                m.id === assistantMsgId ? { ...m, content: displayText } : m
               ),
             };
           }
