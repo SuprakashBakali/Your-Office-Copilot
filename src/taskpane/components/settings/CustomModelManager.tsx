@@ -68,6 +68,7 @@ const useStyles = makeStyles({
   },
   leaderboard: {
     marginTop: '16px',
+    marginBottom: '16px',
     padding: '16px',
     borderRadius: '10px',
     backgroundColor: tokens.colorNeutralBackground2,
@@ -373,23 +374,6 @@ export const CustomModelManager: React.FC = () => {
         </div>
       </div>
 
-      {models.length === 0 ? (
-        <div className={classes.empty}>
-          <Text size={200}>No models added yet.<br />Click <strong>Add Model</strong> to get started.</Text>
-        </div>
-      ) : (
-        models.map(model => (
-          <ModelCard
-            key={model.id}
-            model={model}
-            isActive={activeId === model.id}
-            onSetActive={() => setActive(model.id)}
-            onUpdate={updateModel}
-            onDelete={() => deleteModel(model.id)}
-          />
-        ))
-      )}
-
       {testRankings.length > 0 && (
         <div className={classes.leaderboard}>
           <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
@@ -415,6 +399,23 @@ export const CustomModelManager: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {models.length === 0 ? (
+        <div className={classes.empty}>
+          <Text size={200}>No models added yet.<br />Click <strong>Add Model</strong> to get started.</Text>
+        </div>
+      ) : (
+        models.map(model => (
+          <ModelCard
+            key={model.id}
+            model={model}
+            isActive={activeId === model.id}
+            onSetActive={() => setActive(model.id)}
+            onUpdate={updateModel}
+            onDelete={() => deleteModel(model.id)}
+          />
+        ))
       )}
     </div>
   );
