@@ -7,7 +7,7 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '4px',
     width: '100%',
   },
   inputArea: {
@@ -17,7 +17,7 @@ const useStyles = makeStyles({
   },
   textarea: {
     flexGrow: 1,
-    minHeight: '40px',
+    minHeight: '36px',
     maxHeight: '120px',
   },
   sendBtn: {
@@ -31,6 +31,7 @@ const useStyles = makeStyles({
     alignItems: 'center',
     paddingLeft: '4px',
     paddingRight: '4px',
+    marginTop: '-2px',
   },
 });
 

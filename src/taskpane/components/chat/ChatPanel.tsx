@@ -46,7 +46,7 @@ const useStyles = makeStyles({
     gap: '4px',
   },
   inputArea: {
-    padding: '10px 12px',
+    padding: '8px',
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
     flexShrink: 0,
@@ -54,20 +54,23 @@ const useStyles = makeStyles({
   contextToggle: {
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    marginBottom: '8px',
+    gap: '4px',
+    marginBottom: '6px',
     fontSize: tokens.fontSizeBase200,
   },
   modelInfo: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    marginLeft: 'auto',
     padding: '2px 6px',
     borderRadius: '4px',
     backgroundColor: tokens.colorNeutralBackground3,
     fontSize: tokens.fontSizeBase100,
     color: tokens.colorNeutralForeground3,
-    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: '120px',
   },
 });
 
@@ -182,11 +185,11 @@ export const ChatPanel: React.FC = () => {
             onChange={(_, data) => setIncludeContext(data.checked)}
             label=""
           />
-          <Text size={200}>
-            {includeContext ? '📎 Workbook context ON' : 'Workbook context OFF'}
+          <Text size={200} style={{ whiteSpace: 'nowrap' }}>
+            {includeContext ? '📎 Context ON' : 'Context OFF'}
           </Text>
-          <div className={classes.modelInfo}>
-            {settings.activeProvider}/{settings.activeModel.split('/').pop()}
+          <div className={classes.modelInfo} title={`${settings.activeProvider}/${settings.activeModel}`}>
+            {settings.activeModel.split('/').pop()}
           </div>
         </div>
         <ChatInput
