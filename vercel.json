@@ -1,6 +1,6 @@
 {
   "outputDirectory": "public",
-  "routes": [
-    { "src": "^/$", "dest": "/taskpane.html" }
+  "rewrites": [
+    { "source": "/", "destination": "/taskpane.html" }
   ]
 }
