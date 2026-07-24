@@ -28,6 +28,22 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.writeToRange(cmd.range, cmd.values);
           results.executed++;
           break;
+        case 'create_chart':
+          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title);
+          results.executed++;
+          break;
+        case 'create_pivot_table':
+          await ExcelService.createPivotTable(cmd.source_range, cmd.target_cell, cmd.row_field, cmd.value_field, cmd.pivot_name);
+          results.executed++;
+          break;
+        case 'clear_range':
+          await ExcelService.clearRange(cmd.range);
+          results.executed++;
+          break;
+        case 'format_range':
+          await ExcelService.formatRange(cmd.range, cmd.options);
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown action: ${cmd.action}`);
       }
@@ -112,6 +128,11 @@ Available actions:
 - Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World"}</EXCEL_CMD>
 - Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)"}</EXCEL_CMD>
 - Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]]}</EXCEL_CMD>
+- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B10","title":"My Chart"}</EXCEL_CMD>
+    - Supported chart types: "column", "pie", "line", "bar", "area", "scatter"
+- Create a PivotTable: <EXCEL_CMD>{"action":"create_pivot_table","source_range":"A1:D100","target_cell":"F1","row_field":"Category","value_field":"Sales","pivot_name":"SalesSummary"}</EXCEL_CMD>
+- Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100"}</EXCEL_CMD>
+- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14}}</EXCEL_CMD>
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to put/type/write/insert/set data in Excel.

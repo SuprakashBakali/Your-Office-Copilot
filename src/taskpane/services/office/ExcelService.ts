@@ -184,16 +184,95 @@ export class ExcelService {
       const worksheet = context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(dataRange);
       let chartType = Excel.ChartType.columnClustered;
-      if (type.toLowerCase().includes('pie')) chartType = Excel.ChartType.pie;
-      else if (type.toLowerCase().includes('line')) chartType = Excel.ChartType.line;
-      else if (type.toLowerCase().includes('bar')) chartType = Excel.ChartType.barClustered;
-
+      const t = type.toLowerCase();
+      if (t.includes('pie')) chartType = Excel.ChartType.pie;
+      else if (t.includes('line')) chartType = Excel.ChartType.line;
+      else if (t.includes('bar')) chartType = Excel.ChartType.barClustered;
+      else if (t.includes('area')) chartType = Excel.ChartType.area;
+      else if (t.includes('scatter')) chartType = Excel.ChartType.xyscatter;
       const chart = worksheet.charts.add(chartType, range, Excel.ChartSeriesBy.auto);
       chart.title.text = title;
       await context.sync();
     });
   }
 
+  static async clearRange(address: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      range.clear();
+      await context.sync();
+    });
+  }
+
+  static async formatRange(
+    address: string,
+    opts: { bold?: boolean; italic?: boolean; backgroundColor?: string; fontColor?: string; fontSize?: number }
+  ): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const range = worksheet.getRange(address);
+      if (opts.bold !== undefined) range.format.font.bold = opts.bold;
+      if (opts.italic !== undefined) range.format.font.italic = opts.italic;
+      if (opts.backgroundColor) range.format.fill.color = opts.backgroundColor;
+      if (opts.fontColor) range.format.font.color = opts.fontColor;
+      if (opts.fontSize) range.format.font.size = opts.fontSize;
+      await context.sync();
+    });
+  }
+
+  /**
+   * Create a PivotTable from a source range.
+   * Requires ExcelApi 1.8+ (available in Microsoft 365).
+   */
+  static async createPivotTable(
+    sourceRange: string,
+    targetCell: string,
+    rowField: string,
+    valueField: string,
+    pivotName = 'AICopilotPivot'
+  ): Promise<void> {
+    return Excel.run(async (context) => {
+      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const src = worksheet.getRange(sourceRange);
+      const dest = worksheet.getRange(targetCell);
+
+      // Remove existing pivot with same name if present
+      try {
+        const existing = worksheet.pivotTables.getItem(pivotName);
+        existing.delete();
+        await context.sync();
+      } catch { /* doesn't exist yet */ }
+
+      const pivotTable = worksheet.pivotTables.add(pivotName, src, dest);
+      await context.sync();
+
+      // Add row field
+      try {
+        const rowHierarchy = pivotTable.hierarchies.getItem(rowField);
+        pivotTable.rowHierarchies.add(rowHierarchy);
+        await context.sync();
+      } catch {
+        // field name might differ; load all hierarchies for debug
+        pivotTable.hierarchies.load('items/name');
+        await context.sync();
+        const available = pivotTable.hierarchies.items.map(h => h.name).join(', ');
+        throw new Error(`Row field "${rowField}" not found. Available fields: ${available}`);
+      }
+
+      // Add value field
+      try {
+        const valueHierarchy = pivotTable.hierarchies.getItem(valueField);
+        pivotTable.dataHierarchies.add(valueHierarchy);
+        await context.sync();
+      } catch {
+        pivotTable.hierarchies.load('items/name');
+        await context.sync();
+        const available = pivotTable.hierarchies.items.map(h => h.name).join(', ');
+        throw new Error(`Value field "${valueField}" not found. Available fields: ${available}`);
+      }
+    });
+  }
   static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
       const data = await this.getSelectedRange();
