@@ -102,7 +102,8 @@ export const PromptTemplates: React.FC<PromptTemplatesProps> = ({ onSelect, host
     if (onSelect) {
       onSelect(prompt);
     } else {
-      // Switch to chat view and we'll need to handle this
+      // Switch to chat view and populate the input
+      dispatch({ type: 'SET_PENDING_PROMPT', payload: prompt });
       dispatch({ type: 'SET_VIEW', payload: 'chat' });
     }
   };

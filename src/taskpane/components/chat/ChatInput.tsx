@@ -1,6 +1,7 @@
-import React, { useState, useRef, KeyboardEvent } from 'react';
+import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { makeStyles, tokens, Button, Textarea, Tooltip, Text } from '@fluentui/react-components';
 import { SendRegular, StopRegular, KeyboardRegular } from '@fluentui/react-icons';
+import { useAppState, useAppDispatch } from '../../store/AppContext';
 
 const useStyles = makeStyles({
   container: {
@@ -44,6 +45,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
   const classes = useStyles();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { pendingPrompt } = useAppState();
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (pendingPrompt) {
+      setText(pendingPrompt);
+      dispatch({ type: 'SET_PENDING_PROMPT', payload: null });
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }
+  }, [pendingPrompt, dispatch]);
 
   const handleSend = () => {
     if (text.trim() && !disabled) {
