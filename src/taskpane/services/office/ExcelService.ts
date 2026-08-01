@@ -156,7 +156,7 @@ export class ExcelService {
     });
   }
 
-  static async applyConditionalFormatting(address: string, rules: any): Promise<void> {
+  static async applyConditionalFormatting(address: string, _rules: any): Promise<void> {
     return Excel.run(async (context) => {
       const worksheet = context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
@@ -572,7 +572,7 @@ export class ExcelService {
   }
 
 
-  static async getContextForAI(maxCells: number = 1000): Promise<string> {
+  static async getContextForAI(_maxCells: number = 1000): Promise<string> {
     try {
       const data = await this.getSelectedRange();
       if (data.rowCount * data.columnCount === 1 && !data.values[0][0]) {
@@ -750,9 +750,9 @@ export class ExcelService {
           usedRange.load(['values', 'address', 'rowCount', 'columnCount']);
           await context.sync();
 
-          const baseAddr = usedRange.address.split('!')[0];
+          const _baseAddr = usedRange.address.split('!')[0];
           const startMatch = usedRange.address.match(/\$?([A-Z]+)\$?(\d+)/i);
-          const startCol = startMatch ? startMatch[1] : 'A';
+          const _startCol = startMatch ? startMatch[1] : 'A';
           const startRow = startMatch ? parseInt(startMatch[2], 10) : 1;
 
           for (let r = 0; r < usedRange.rowCount; r++) {

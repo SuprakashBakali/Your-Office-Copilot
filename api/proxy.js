@@ -26,8 +26,8 @@ const ALLOWED_HOSTS = new Set([
 
 const MAX_RESPONSE_BYTES = 8 * 1024 * 1024; // 8 MB safety cap
 
-function isAllowedTarget(targetUrl: string): boolean {
-  let url: URL;
+function isAllowedTarget(targetUrl) {
+  let url;
   try {
     url = new URL(targetUrl);
   } catch {

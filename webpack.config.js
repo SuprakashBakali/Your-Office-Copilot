@@ -22,6 +22,8 @@ const ALLOWED_HOSTS = new Set([
   "127.0.0.1",
 ]);
 
+const MAX_RESPONSE_BYTES = 8 * 1024 * 1024; // 8 MB safety cap
+
 function isAllowedTarget(targetUrl) {
   let url;
   try {
@@ -192,7 +194,7 @@ module.exports = async (env, options) => {
               const { done, value } = await reader.read();
               if (done) break;
               bytesSeen += value.byteLength;
-              if (bytesSeen > 8 * 1024 * 1024) {
+              if (bytesSeen > MAX_RESPONSE_BYTES) {
                 await reader.cancel();
                 res.end();
                 return;

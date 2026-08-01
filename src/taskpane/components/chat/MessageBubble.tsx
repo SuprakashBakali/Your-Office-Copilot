@@ -3,7 +3,6 @@ import { makeStyles, tokens, Badge, Button, Tooltip } from '@fluentui/react-comp
 import { PersonRegular, BotRegular, ArrowSyncRegular, TableSimpleRegular } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
-import { formatDateTime } from '../../utils/formatters';
 import { ChatMessage } from '../../types';
 
 const useStyles = makeStyles({

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { makeStyles, tokens, Input, Button, Text, Spinner, Badge } from '@fluentui/react-components';
-import { KeyRegular, EyeRegular, EyeOffRegular, CheckmarkCircleRegular, ErrorCircleRegular } from '@fluentui/react-icons';
+import { EyeRegular, EyeOffRegular, CheckmarkCircleRegular, ErrorCircleRegular } from '@fluentui/react-icons';
 import { useSettings } from '../../hooks/useSettings';
 import { useAI } from '../../hooks/useAI';
 import { PROVIDER_CONFIGS } from '../../services/ai/ProviderFactory';

@@ -2,7 +2,7 @@
 // Formatters — Data display, export, and conversion helpers
 // ============================================================
 
-import { CellData, ChatConversation, ChatMessage, ExportFormat } from "../types";
+import { CellData, ChatConversation, ExportFormat } from "../types";
 
 /** Format a number for display (with locale-aware separators) */
 export function formatNumber(n: number, decimals = 2): string {

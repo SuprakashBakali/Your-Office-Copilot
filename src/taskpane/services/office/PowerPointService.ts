@@ -2,7 +2,7 @@ import { SlideData } from '../../types';
 
 export class PowerPointService {
   static async getCurrentSlide(): Promise<SlideData> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       Office.context.document.getSelectedDataAsync(Office.CoercionType.Text, (result) => {
         if (result.status === Office.AsyncResultStatus.Failed) {
           resolve({
@@ -95,7 +95,7 @@ export class PowerPointService {
     }
   }
 
-  static async setSlideNotes(notes: string): Promise<void> {
+  static async setSlideNotes(_notes: string): Promise<void> {
     throw new Error("Setting slide notes requires newer PowerPoint API, not fully implemented in Office JS yet.");
   }
 

@@ -136,7 +136,7 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
     }
   };
 
-  const providerColor = PROVIDERS.find(p => p.id === model.provider)?.color || '#888';
+  const _providerColor = PROVIDERS.find(p => p.id === model.provider)?.color || '#888';
 
   return (
     <div className={`${classes.card} ${isActive ? classes.activeCard : ''}`}>
