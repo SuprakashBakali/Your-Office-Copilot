@@ -27,6 +27,11 @@ module.exports = async (env, options) => {
       filename: "[name].[contenthash].js",
       clean: true,
     },
+    optimization: {
+      splitChunks: {
+        chunks: "all",
+      },
+    },
     resolve: {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".css"],
       fallback: {

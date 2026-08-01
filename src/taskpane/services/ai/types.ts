@@ -4,6 +4,7 @@ export interface AIRequestOptions {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
+  webSearch?: boolean;
 }
 
 export interface AIStreamChunk {
