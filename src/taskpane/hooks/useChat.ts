@@ -137,6 +137,68 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.highlightTopBottom(cmd.range, cmd.type, cmd.count, cmd.color);
           results.executed++;
           break;
+        // ── From office-agents ──────────────────────────────────────────────
+        case 'eval_js': {
+          const jsResult = await ExcelService.evalOfficeJs(cmd.code);
+          results.executed++;
+          if (jsResult !== null && jsResult !== undefined) {
+            results.errors.push(`[eval_js result]: ${JSON.stringify(jsResult)}`);
+          }
+          break;
+        }
+        case 'screenshot_range': {
+          // Screenshot is handled in the response rendering — just mark executed
+          await ExcelService.screenshotRange(cmd.range);
+          results.executed++;
+          break;
+        }
+        case 'search_data': {
+          const searchResults = await ExcelService.searchData(cmd.search_term, {
+            matchCase: cmd.match_case,
+            useRegex: cmd.use_regex,
+            range: cmd.range,
+            maxResults: cmd.max_results,
+          });
+          results.executed++;
+          results.errors.push(`[search result]: ${JSON.stringify(searchResults)}`);
+          break;
+        }
+        case 'get_all_objects': {
+          const objects = await ExcelService.getAllObjects();
+          results.executed++;
+          results.errors.push(`[objects]: ${JSON.stringify(objects)}`);
+          break;
+        }
+        case 'get_range_csv': {
+          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows);
+          results.executed++;
+          results.errors.push(`[CSV data]:\n${csv}`);
+          break;
+        }
+        case 'freeze_panes':
+          await ExcelService.freezePanes(cmd.cell);
+          results.executed++;
+          break;
+        case 'unfreeze_panes':
+          await ExcelService.unfreezePanes();
+          results.executed++;
+          break;
+        case 'autofit_columns':
+          await ExcelService.autoFitColumns(cmd.range);
+          results.executed++;
+          break;
+        case 'autofit_rows':
+          await ExcelService.autoFitRows(cmd.range);
+          results.executed++;
+          break;
+        case 'create_named_range':
+          await ExcelService.upsertNamedRange(cmd.name, cmd.address);
+          results.executed++;
+          break;
+        case 'delete_named_range':
+          await ExcelService.deleteNamedRange(cmd.name);
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown action: ${cmd.action}`);
       }
@@ -332,13 +394,26 @@ Available actions:
 - Format Chart:    <EXCEL_CMD>{"action":"format_chart","chart_name":"Chart1","options":{"title":"Sales","showDataLabels":true,"legendPosition":"bottom"}}</EXCEL_CMD>
 - HL Duplicates:   <EXCEL_CMD>{"action":"highlight_duplicates","range":"A1:A100","color":"pink"}</EXCEL_CMD>
 - HL Top/Bottom:   <EXCEL_CMD>{"action":"highlight_top_bottom","range":"B1:B100","type":"top","count":10,"color":"lightgreen"}</EXCEL_CMD>
+- Freeze Panes:    <EXCEL_CMD>{"action":"freeze_panes","cell":"B2"}</EXCEL_CMD> (freezes row 1 and col A; use "A2" to freeze only row 1)
+- Unfreeze Panes:  <EXCEL_CMD>{"action":"unfreeze_panes"}</EXCEL_CMD>
+- Auto-fit Cols:   <EXCEL_CMD>{"action":"autofit_columns","range":"A1:F1"}</EXCEL_CMD> (omit range to auto-fit all used columns)
+- Auto-fit Rows:   <EXCEL_CMD>{"action":"autofit_rows","range":"A1:A100"}</EXCEL_CMD>
+- Named Range:     <EXCEL_CMD>{"action":"create_named_range","name":"Revenue","address":"Sheet1!B2:B100"}</EXCEL_CMD>
+- Delete Named:    <EXCEL_CMD>{"action":"delete_named_range","name":"Revenue"}</EXCEL_CMD>
+- Search Data:     <EXCEL_CMD>{"action":"search_data","search_term":"Q4","match_case":false,"use_regex":false,"max_results":50}</EXCEL_CMD>
+- Get Objects:     <EXCEL_CMD>{"action":"get_all_objects"}</EXCEL_CMD> (lists all charts, pivot tables, tables)
+- Get CSV:         <EXCEL_CMD>{"action":"get_range_csv","range":"A1:F100","max_rows":200}</EXCEL_CMD> (token-efficient data read)
+- Eval JS:         <EXCEL_CMD>{"action":"eval_js","code":"const ws = context.workbook.worksheets.getActiveWorksheet(); const range = ws.getRange('A1'); range.values = [['Hello']]; await context.sync();"}</EXCEL_CMD>
+    ⚠️ eval_js is an ESCAPE HATCH for actions not covered by other commands. Use it only when no other action fits. The code runs inside Excel.run with 'context' (Excel.RequestContext) available. Always call 'await context.sync()' before returning a value.
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to write, modify, format, or analyze data in the spreadsheet.
-- You can emit multiple EXCEL_CMD blocks in one response to chain operations.
+- You can emit multiple EXCEL_CMD blocks in one response to chain operations (e.g., write_range → autofit_columns → create_chart).
 - Use valid JSON inside the block. Do NOT use markdown code blocks (\`\`\`) inside the EXCEL_CMD block.
 - Be precise with cell references and ranges.
 - If you don't know the exact range, assume A1 is the starting point or ask the user.
+- After writing large data ranges, emit autofit_columns to make the data readable.
+- After writing data, if the user might want a chart, proactively suggest one.
 
 Excel Formula Expertise (use these in write_formula):
 - Dynamic Arrays: FILTER(), SORT(), UNIQUE(), SEQUENCE(), SORTBY() — spill results automatically
@@ -350,6 +425,7 @@ Excel Formula Expertise (use these in write_formula):
 - Statistical: NORM.DIST(), T.TEST(), LINEST(), FORECAST.ETS(), PERCENTILE()
 - Array formulas with LET() and LAMBDA() for reusable logic
 - Named ranges: prefer named ranges in formulas for readability (e.g. =SUM(Revenue) vs =SUM(B2:B100))` : '';
+
 
 
     const wordCommandDocs = hostApp === 'Word' ? `

@@ -571,6 +571,7 @@ export class ExcelService {
     });
   }
 
+
   static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
       const data = await this.getSelectedRange();
@@ -583,4 +584,325 @@ export class ExcelService {
       return `Unable to read Excel context: ${(e as Error).message}`;
     }
   }
+
+  // ── From office-agents: eval_officejs escape hatch ────────────────────────
+  /**
+   * Execute arbitrary Office.js code inside Excel.run.
+   * Returns the value returned by the code, or null.
+   * The code string runs as: `async (context) => { <code> }`
+   */
+  static async evalOfficeJs(code: string): Promise<any> {
+    return Excel.run(async (context) => {
+      // Build an async function with `context` in scope and evaluate it
+      // eslint-disable-next-line no-new-func
+      const fn = new Function('context', 'Excel', `return (async () => { ${code} })()`);
+      const result = await fn(context, Excel);
+      return result ?? null;
+    });
+  }
+
+  // ── From office-agents: screenshot_range ─────────────────────────────────
+  /**
+   * Capture a cell range as a base64 PNG with row/column headers composited
+   * onto the image. Returns null if the API is not supported.
+   */
+  static async screenshotRange(address: string): Promise<string | null> {
+    return Excel.run(async (context) => {
+      const ws = context.workbook.worksheets.getActiveWorksheet();
+      const range = ws.getRange(address);
+      range.load(['rowCount', 'columnCount']);
+      const image = range.getImage();
+      await context.sync();
+
+      const numCols = range.columnCount;
+      const numRows = range.rowCount;
+
+      // Load column widths and row heights for header compositing
+      const cols: Excel.Range[] = [];
+      const rows: Excel.Range[] = [];
+      for (let i = 0; i < numCols; i++) {
+        const col = range.getColumn(i);
+        col.format.load('columnWidth');
+        cols.push(col);
+      }
+      for (let i = 0; i < numRows; i++) {
+        const row = range.getRow(i);
+        row.format.load('rowHeight');
+        rows.push(row);
+      }
+      await context.sync();
+
+      const colWidths = cols.map(c => c.format.columnWidth);
+      const rowHeights = rows.map(r => r.format.rowHeight);
+      const base64 = image.value;
+
+      // Parse A1 notation to get start row/col indices
+      const match = address.replace(/[^A-Za-z0-9:]/g, '').match(/^([A-Za-z]+)(\d+)/);
+      let startCol = 0;
+      let startRow = 0;
+      if (match) {
+        const letters = match[1].toUpperCase();
+        for (let i = 0; i < letters.length; i++) {
+          startCol = startCol * 26 + (letters.charCodeAt(i) - 64);
+        }
+        startCol -= 1;
+        startRow = parseInt(match[2], 10) - 1;
+      }
+
+      // Composite headers onto the image using canvas
+      return new Promise<string | null>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const HEADER_W = 40;
+          const HEADER_H = 20;
+          const canvas = document.createElement('canvas');
+          canvas.width = HEADER_W + img.width;
+          canvas.height = HEADER_H + img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { resolve(base64); return; }
+
+          const totalColW = colWidths.reduce((a, b) => a + b, 0);
+          const totalRowH = rowHeights.reduce((a, b) => a + b, 0);
+          const scaleX = totalColW > 0 ? img.width / totalColW : 1;
+          const scaleY = totalRowH > 0 ? img.height / totalRowH : 1;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, HEADER_W, HEADER_H);
+
+          // Column letter headers
+          ctx.fillStyle = '#f0f0f0';
+          ctx.fillRect(HEADER_W, 0, img.width, HEADER_H);
+          ctx.font = 'bold 10px Calibri, Arial, sans-serif';
+          ctx.fillStyle = '#333';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          let x = HEADER_W;
+          for (let i = 0; i < colWidths.length; i++) {
+            const w = colWidths[i] * scaleX;
+            let letter = '';
+            let tmp = startCol + i;
+            do {
+              letter = String.fromCharCode((tmp % 26) + 65) + letter;
+              tmp = Math.floor(tmp / 26) - 1;
+            } while (tmp >= 0);
+            ctx.fillStyle = '#333';
+            ctx.fillText(letter, x + w / 2, HEADER_H / 2);
+            ctx.strokeStyle = '#c0c0c0';
+            ctx.strokeRect(x, 0, w, HEADER_H);
+            x += w;
+          }
+
+          // Row number headers
+          ctx.fillStyle = '#f0f0f0';
+          ctx.fillRect(0, HEADER_H, HEADER_W, img.height);
+          let y = HEADER_H;
+          for (let i = 0; i < rowHeights.length; i++) {
+            const h = rowHeights[i] * scaleY;
+            ctx.fillStyle = '#333';
+            ctx.fillText(String(startRow + i + 1), HEADER_W / 2, y + h / 2);
+            ctx.strokeStyle = '#c0c0c0';
+            ctx.strokeRect(0, y, HEADER_W, h);
+            y += h;
+          }
+
+          // Corner cell
+          ctx.fillStyle = '#f0f0f0';
+          ctx.fillRect(0, 0, HEADER_W, HEADER_H);
+          ctx.strokeStyle = '#c0c0c0';
+          ctx.strokeRect(0, 0, HEADER_W, HEADER_H);
+
+          resolve(canvas.toDataURL('image/png').split(',')[1]);
+        };
+        img.onerror = () => resolve(base64);
+        img.src = `data:image/png;base64,${base64}`;
+      });
+    });
+  }
+
+  // ── From office-agents: search_data ──────────────────────────────────────
+  /**
+   * Search for a text/value pattern across the workbook (or a specific range).
+   * Returns up to maxResults matching cells with address + value.
+   */
+  static async searchData(
+    searchTerm: string,
+    options: { matchCase?: boolean; useRegex?: boolean; range?: string; maxResults?: number } = {}
+  ): Promise<{ address: string; value: any; sheetName: string }[]> {
+    return Excel.run(async (context) => {
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+
+      const results: { address: string; value: any; sheetName: string }[] = [];
+      const max = options.maxResults ?? 200;
+      const regex = options.useRegex
+        ? new RegExp(searchTerm, options.matchCase ? '' : 'i')
+        : null;
+      const term = options.matchCase ? searchTerm : searchTerm.toLowerCase();
+
+      for (const sheet of sheets.items) {
+        if (results.length >= max) break;
+        try {
+          const usedRange = options.range
+            ? sheet.getRange(options.range)
+            : sheet.getUsedRange();
+          usedRange.load(['values', 'address', 'rowCount', 'columnCount']);
+          await context.sync();
+
+          const baseAddr = usedRange.address.split('!')[0];
+          const startMatch = usedRange.address.match(/\$?([A-Z]+)\$?(\d+)/i);
+          const startCol = startMatch ? startMatch[1] : 'A';
+          const startRow = startMatch ? parseInt(startMatch[2], 10) : 1;
+
+          for (let r = 0; r < usedRange.rowCount; r++) {
+            for (let c = 0; c < usedRange.columnCount; c++) {
+              if (results.length >= max) break;
+              const cell = usedRange.values[r][c];
+              const cellStr = String(cell ?? '');
+              const matches = regex
+                ? regex.test(cellStr)
+                : (options.matchCase ? cellStr : cellStr.toLowerCase()).includes(term);
+              if (matches) {
+                // Build cell address
+                let colLetter = '';
+                let colIdx = c;
+                do {
+                  colLetter = String.fromCharCode((colIdx % 26) + 65) + colLetter;
+                  colIdx = Math.floor(colIdx / 26) - 1;
+                } while (colIdx >= 0);
+                results.push({
+                  address: `${sheet.name}!${colLetter}${startRow + r}`,
+                  value: cell,
+                  sheetName: sheet.name,
+                });
+              }
+            }
+          }
+        } catch {
+          // Empty sheet — skip
+        }
+      }
+      return results;
+    });
+  }
+
+  // ── From office-agents: get_all_objects ───────────────────────────────────
+  /** List all charts and pivot tables in the workbook. */
+  static async getAllObjects(): Promise<{ type: string; name: string; sheetName: string }[]> {
+    return Excel.run(async (context) => {
+      const sheets = context.workbook.worksheets;
+      sheets.load('items/name');
+      await context.sync();
+
+      const objects: { type: string; name: string; sheetName: string }[] = [];
+
+      for (const sheet of sheets.items) {
+        const charts = sheet.charts;
+        const pivots = sheet.pivotTables;
+        const tables = sheet.tables;
+        charts.load('items/name');
+        pivots.load('items/name');
+        tables.load('items/name');
+        await context.sync();
+        charts.items.forEach(c => objects.push({ type: 'chart', name: c.name, sheetName: sheet.name }));
+        pivots.items.forEach(p => objects.push({ type: 'pivotTable', name: p.name, sheetName: sheet.name }));
+        tables.items.forEach(t => objects.push({ type: 'table', name: t.name, sheetName: sheet.name }));
+      }
+      return objects;
+    });
+  }
+
+  // ── From office-agents: get_range_as_csv (token-efficient read) ──────────
+  /** Read a range as CSV text — much more token-efficient than JSON for large data. */
+  static async getRangeAsCsv(address: string, maxRows: number = 500): Promise<string> {
+    return Excel.run(async (context) => {
+      const ws = context.workbook.worksheets.getActiveWorksheet();
+      const range = ws.getRange(address);
+      range.load(['values', 'rowCount']);
+      await context.sync();
+
+      const rows = range.values.slice(0, maxRows);
+      return rows
+        .map(row =>
+          row.map(cell => {
+            const s = String(cell ?? '');
+            return s.includes(',') || s.includes('"') || s.includes('\n')
+              ? `"${s.replace(/"/g, '""')}"`
+              : s;
+          }).join(',')
+        )
+        .join('\n');
+    });
+  }
+
+  // ── Freeze panes ──────────────────────────────────────────────────────────
+  /** Freeze rows above and/or columns left of the given cell (e.g. "B2" freezes row 1 + col A). */
+  static async freezePanes(frozenAtCell: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const ws = context.workbook.worksheets.getActiveWorksheet();
+      ws.freezePanes.freezeAt(ws.getRange(frozenAtCell));
+      await context.sync();
+    });
+  }
+
+  /** Unfreeze all panes on the active sheet. */
+  static async unfreezePanes(): Promise<void> {
+    return Excel.run(async (context) => {
+      const ws = context.workbook.worksheets.getActiveWorksheet();
+      ws.freezePanes.unfreeze();
+      await context.sync();
+    });
+  }
+
+  // ── Auto-fit columns/rows ─────────────────────────────────────────────────
+  /** Auto-fit column widths for a range (makes data readable after writing). */
+  static async autoFitColumns(address?: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const ws = context.workbook.worksheets.getActiveWorksheet();
+      const range = address ? ws.getRange(address) : ws.getUsedRange();
+      range.format.autofitColumns();
+      await context.sync();
+    });
+  }
+
+  /** Auto-fit row heights for a range. */
+  static async autoFitRows(address?: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const ws = context.workbook.worksheets.getActiveWorksheet();
+      const range = address ? ws.getRange(address) : ws.getUsedRange();
+      range.format.autofitRows();
+      await context.sync();
+    });
+  }
+
+  // ── Named range management ─────────────────────────────────────────────────
+  /** Create or update a named range. */
+  static async upsertNamedRange(name: string, address: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const names = context.workbook.names;
+      names.load('items/name');
+      await context.sync();
+      const existing = names.items.find(n => n.name === name);
+      if (existing) {
+        existing.delete();
+        await context.sync();
+      }
+      names.add(name, address);
+      await context.sync();
+    });
+  }
+
+  /** Delete a named range. */
+  static async deleteNamedRange(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const item = context.workbook.names.getItemOrNullObject(name);
+      await context.sync();
+      if (!item.isNullObject) {
+        item.delete();
+        await context.sync();
+      }
+    });
+  }
 }
+
