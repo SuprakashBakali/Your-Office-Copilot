@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   makeStyles, tokens, Button, Dropdown, Option, Tooltip, Switch, Text,
-  Badge, Menu, MenuItem, MenuTrigger, MenuPopover, MenuList,
+  Menu, MenuItem, MenuTrigger, MenuPopover, MenuList, Divider,
 } from '@fluentui/react-components';
 import {
   AddRegular, ArrowExportRegular, ChatRegular, DeleteRegular,
-  DocumentTextRegular, CodeRegular, TextTRegular,
+  DocumentTextRegular, CodeRegular, TextTRegular, HistoryRegular,
 } from '@fluentui/react-icons';
 import { useChat } from '../../hooks/useChat';
 import { useAI } from '../../hooks/useAI';
@@ -24,38 +24,25 @@ const useStyles = makeStyles({
     width: '100%',
     backgroundColor: tokens.colorNeutralBackground2,
   },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '6px 10px',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    gap: '6px',
-    backgroundColor: tokens.colorNeutralBackground1,
-    flexShrink: 0,
-  },
-  conversationSelect: {
-    flexGrow: 1,
-    minWidth: 0,
-  },
   messageList: {
     flexGrow: 1,
     overflowY: 'auto',
-    padding: '12px',
+    padding: '10px 8px',
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
   },
   inputArea: {
-    padding: '8px',
+    padding: '6px 8px 4px 8px',
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
     flexShrink: 0,
   },
-  contextToggle: {
+  contextRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-    marginBottom: '6px',
+    marginBottom: '4px',
     fontSize: tokens.fontSizeBase200,
   },
   modelInfo: {
@@ -70,7 +57,27 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    maxWidth: '120px',
+    maxWidth: '130px',
+  },
+  // Bottom toolbar — replaces where Tools/Templates used to be
+  toolbar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 8px 6px 8px',
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground1,
+    flexShrink: 0,
+  },
+  historyDropdown: {
+    flexGrow: 1,
+    minWidth: 0,
+  },
+  toolbarActions: {
+    display: 'flex',
+    gap: '2px',
+    alignItems: 'center',
+    flexShrink: 0,
   },
 });
 
@@ -78,7 +85,7 @@ export const ChatPanel: React.FC = () => {
   const classes = useStyles();
   const { host } = useAppState();
   const {
-    conversations, activeConversation, messages, isGenerating, sendChatMessage,
+    conversations, activeConversation, messages, sendChatMessage,
     createConversation, setActiveConversation, deleteConversation, exportConversation,
   } = useChat(host);
   const { isStreaming, cancelStream } = useAI();
@@ -91,7 +98,7 @@ export const ChatPanel: React.FC = () => {
     if (messageListRef.current) {
       messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
     }
-  }, [messages, isGenerating, isStreaming]);
+  }, [messages, isStreaming]);
 
   const handleSend = React.useCallback((text: string) => {
     sendChatMessage(text, includeContext);
@@ -105,56 +112,6 @@ export const ChatPanel: React.FC = () => {
 
   return (
     <div className={classes.container}>
-      {/* Header with conversation management */}
-      <div className={classes.header}>
-        <Dropdown
-          className={classes.conversationSelect}
-          value={activeConversation?.title || 'New Chat'}
-          onOptionSelect={(_, data) => setActiveConversation(data.optionValue as string)}
-          size="small"
-        >
-          {conversations.map(conv => (
-            <Option key={conv.id} value={conv.id}>{conv.title}</Option>
-          ))}
-        </Dropdown>
-
-        <Tooltip content="New Chat" relationship="label">
-          <Button icon={<AddRegular />} appearance="subtle" size="small" onClick={createConversation} />
-        </Tooltip>
-
-        <Menu>
-          <MenuTrigger>
-            <Tooltip content="Export" relationship="label">
-              <Button icon={<ArrowExportRegular />} appearance="subtle" size="small" />
-            </Tooltip>
-          </MenuTrigger>
-          <MenuPopover>
-            <MenuList>
-              <MenuItem icon={<DocumentTextRegular />} onClick={() => handleExport('markdown')}>
-                Export as Markdown
-              </MenuItem>
-              <MenuItem icon={<CodeRegular />} onClick={() => handleExport('json')}>
-                Export as JSON
-              </MenuItem>
-              <MenuItem icon={<TextTRegular />} onClick={() => handleExport('txt')}>
-                Export as Text
-              </MenuItem>
-            </MenuList>
-          </MenuPopover>
-        </Menu>
-
-        {activeConversation && (
-          <Tooltip content="Delete conversation" relationship="label">
-            <Button
-              icon={<DeleteRegular />}
-              appearance="subtle"
-              size="small"
-              onClick={() => deleteConversation(activeConversation.id)}
-            />
-          </Tooltip>
-        )}
-      </div>
-
       {/* Messages */}
       <div className={classes.messageList} ref={messageListRef}>
         {messages.length === 0 ? (
@@ -170,7 +127,7 @@ export const ChatPanel: React.FC = () => {
             <MessageBubble key={msg.id} message={msg} />
           ))
         )}
-        {isGenerating && (
+        {isStreaming && (
           <div style={{ padding: '8px', display: 'flex', justifyContent: 'flex-start' }}>
             <LoadingDots label="Generating..." />
           </div>
@@ -179,7 +136,7 @@ export const ChatPanel: React.FC = () => {
 
       {/* Input Area */}
       <div className={classes.inputArea}>
-        <div className={classes.contextToggle}>
+        <div className={classes.contextRow}>
           <Switch
             checked={includeContext}
             onChange={(_, data) => setIncludeContext(data.checked)}
@@ -194,10 +151,70 @@ export const ChatPanel: React.FC = () => {
         </div>
         <ChatInput
           onSend={handleSend}
-          disabled={isGenerating}
+          disabled={isStreaming}
           onCancel={cancelStream}
-          isStreaming={isGenerating}
+          isStreaming={isStreaming}
         />
+      </div>
+
+      {/* Bottom Toolbar — History, New Chat, Export, Delete */}
+      <div className={classes.toolbar}>
+        <Tooltip content="Chat history" relationship="label">
+          <HistoryRegular style={{ fontSize: '14px', color: tokens.colorNeutralForeground3, flexShrink: 0 }} />
+        </Tooltip>
+        <Dropdown
+          className={classes.historyDropdown}
+          value={activeConversation?.title || 'New Chat'}
+          onOptionSelect={(_, data) => setActiveConversation(data.optionValue as string)}
+          size="small"
+        >
+          {conversations.map(conv => (
+            <Option key={conv.id} value={conv.id}>{conv.title}</Option>
+          ))}
+        </Dropdown>
+
+        <div className={classes.toolbarActions}>
+          <Tooltip content="New Chat" relationship="label">
+            <Button
+              icon={<AddRegular />}
+              appearance="subtle"
+              size="small"
+              onClick={createConversation}
+            />
+          </Tooltip>
+
+          <Menu>
+            <MenuTrigger>
+              <Tooltip content="Export" relationship="label">
+                <Button icon={<ArrowExportRegular />} appearance="subtle" size="small" />
+              </Tooltip>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                <MenuItem icon={<DocumentTextRegular />} onClick={() => handleExport('markdown')}>
+                  Export as Markdown
+                </MenuItem>
+                <MenuItem icon={<CodeRegular />} onClick={() => handleExport('json')}>
+                  Export as JSON
+                </MenuItem>
+                <MenuItem icon={<TextTRegular />} onClick={() => handleExport('txt')}>
+                  Export as Text
+                </MenuItem>
+              </MenuList>
+            </MenuPopover>
+          </Menu>
+
+          {activeConversation && (
+            <Tooltip content="Delete conversation" relationship="label">
+              <Button
+                icon={<DeleteRegular />}
+                appearance="subtle"
+                size="small"
+                onClick={() => deleteConversation(activeConversation.id)}
+              />
+            </Tooltip>
+          )}
+        </div>
       </div>
     </div>
   );

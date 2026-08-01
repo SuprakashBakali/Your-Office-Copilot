@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { AppView, OfficeHostType, AIProviderType } from '../types';
+import { AppView, OfficeHostType } from '../types';
 import { detectOfficeHost } from '../services/office/OfficeContext';
 
 export interface AppState {
@@ -8,7 +8,6 @@ export interface AppState {
   error: string | null;
   notification: { type: 'success' | 'error' | 'warning' | 'info'; message: string } | null;
   isLoading: boolean;
-  activeToolCategory: string | null;
   pendingPrompt: string | null;
 }
 
@@ -19,7 +18,6 @@ type Action =
   | { type: 'SET_NOTIFICATION'; payload: { type: 'success' | 'error' | 'warning' | 'info'; message: string } | null }
   | { type: 'CLEAR_NOTIFICATION' }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_TOOL_CATEGORY'; payload: string | null }
   | { type: 'SET_PENDING_PROMPT'; payload: string | null };
 
 const initialState: AppState = {
@@ -28,7 +26,6 @@ const initialState: AppState = {
   error: null,
   notification: null,
   isLoading: false,
-  activeToolCategory: null,
   pendingPrompt: null,
 };
 
@@ -42,7 +39,6 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'SET_NOTIFICATION': return { ...state, notification: action.payload };
     case 'CLEAR_NOTIFICATION': return { ...state, notification: null };
     case 'SET_LOADING': return { ...state, isLoading: action.payload };
-    case 'SET_TOOL_CATEGORY': return { ...state, activeToolCategory: action.payload };
     case 'SET_PENDING_PROMPT': return { ...state, pendingPrompt: action.payload };
     default: return state;
   }

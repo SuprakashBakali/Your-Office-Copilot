@@ -1,6 +1,6 @@
 import React from 'react';
 import { TabList, Tab, makeStyles, tokens } from '@fluentui/react-components';
-import { Chat20Regular, Wrench20Regular, BookTemplate20Regular, Settings20Regular } from '@fluentui/react-icons';
+import { Chat20Regular, Settings20Regular } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 import { AppView } from '../../types';
 
@@ -31,8 +31,6 @@ export const NavigationTabs: React.FC = () => {
         appearance="subtle"
       >
         <Tab value="chat" icon={<Chat20Regular />}>Chat</Tab>
-        <Tab value="tools" icon={<Wrench20Regular />}>Tools</Tab>
-        <Tab value="templates" icon={<BookTemplate20Regular />}>Templates</Tab>
         <Tab value="settings" icon={<Settings20Regular />}>Settings</Tab>
       </TabList>
     </div>

@@ -24,7 +24,9 @@
 
 ## 🌟 What is this?
 
-**Your Co-Pilot** is a free, open-source alternative to paid enterprise AI add-ins that runs as a custom **Office Add-in** natively inside Excel, Word, and PowerPoint. It connects to **7 AI providers** (including free ones) and gives you AI superpowers for spreadsheets, documents, and presentations.
+**Your Co-Pilot** is a free, open-source alternative to Microsoft 365 Copilot and paid enterprise AI add-ins that runs as a custom **Office Add-in** natively inside Excel, Word, and PowerPoint. It connects to **7 AI providers** (including free ones like Gemini, Claude, Llama 3, and ChatGPT) and gives you AI superpowers for spreadsheets, documents, and presentations.
+
+> **🔍 Search Keywords:** Open source AI office add-in, free alternative to Microsoft Copilot, AI for Excel, AI for Word, AI for PowerPoint, integrate ChatGPT in Excel, Claude in Word, Gemini for Office 365.
 
 > **🔒 Privacy First:** Your API keys are stored locally in your browser. Your data is sent _only_ to the AI provider you choose — never to any third-party server.
 

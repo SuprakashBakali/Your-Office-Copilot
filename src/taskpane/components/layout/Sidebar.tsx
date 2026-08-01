@@ -4,11 +4,7 @@ import { Header } from './Header';
 import { NavigationTabs } from './NavigationTabs';
 import { useAppState } from '../../store/AppContext';
 import { ChatPanel } from '../chat/ChatPanel';
-import { PromptTemplates } from '../chat/PromptTemplates';
 import { SettingsPanel } from '../settings/SettingsPanel';
-import { ExcelPanel } from '../excel/ExcelPanel';
-import { WordPanel } from '../word/WordPanel';
-import { PowerPointPanel } from '../powerpoint/PowerPointPanel';
 import { NotificationToast } from '../shared/NotificationToast';
 
 const useStyles = makeStyles({
@@ -32,30 +28,13 @@ const useStyles = makeStyles({
 
 export const Sidebar: React.FC = () => {
   const classes = useStyles();
-  const { view, host, notification } = useAppState();
-
-  const renderToolsPanel = () => {
-    switch (host) {
-      case 'Word':
-        return <WordPanel />;
-      case 'PowerPoint':
-        return <PowerPointPanel />;
-      case 'Excel':
-      default:
-        return <ExcelPanel />;
-    }
-  };
+  const { view, notification } = useAppState();
 
   const renderView = () => {
     switch (view) {
-      case 'chat':
-        return <ChatPanel />;
-      case 'tools':
-        return renderToolsPanel();
-      case 'templates':
-        return <PromptTemplates />;
       case 'settings':
         return <SettingsPanel />;
+      case 'chat':
       default:
         return <ChatPanel />;
     }

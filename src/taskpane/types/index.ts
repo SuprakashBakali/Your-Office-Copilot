@@ -172,7 +172,7 @@ export interface SheetInfo {
 
 // ---- App State Types ----
 
-export type AppView = "chat" | "tools" | "templates" | "settings";
+export type AppView = "chat" | "settings";
 
 export type ThemeMode = "light" | "dark" | "auto";
 
@@ -226,67 +226,6 @@ export interface AppNotification {
   duration?: number;
 }
 
-// ---- Prompt Templates ----
-
-export interface PromptTemplate {
-  id: string;
-  title: string;
-  description: string;
-  prompt: string;
-  category: PromptCategory;
-  hostApp: OfficeHostType | "All";
-  icon: string;
-  isFavorite?: boolean;
-}
-
-export type PromptCategory =
-  | "analysis"
-  | "formula"
-  | "chart"
-  | "cleaning"
-  | "writing"
-  | "presentation"
-  | "finance"
-  | "general"
-  | "reporting"
-  | "ca"
-  | "compliance-bd"
-  | "audit"
-  | "cross-app"
-  | "code"
-  | "translate"
-  | "accounting";
-
-// ---- Tool Action Types ----
-
-export interface ToolAction {
-  id: string;
-  label: string;
-  description: string;
-  icon: string;
-  category: string;
-  hostApp: OfficeHostType | "All";
-  /** Function to execute when the tool is invoked */
-  execute?: () => Promise<string>;
-}
-
 // ---- Export Types ----
 
 export type ExportFormat = "markdown" | "json" | "text" | "html";
-
-// ---- Excel Tool Types ----
-
-export type ExcelToolCategory = "analysis" | "formula" | "chart" | "finance" | "cleaning" | "code" | "learning";
-
-export interface ExcelToolResult {
-  content: string;
-  type: "markdown" | "formula" | "code" | "chart-config" | "error";
-  /** If the result can be applied to Excel */
-  applyable?: boolean;
-  /** Data to apply (formula, values, etc.) */
-  applyData?: {
-    type: "formula" | "values" | "chart" | "conditional-format" | "named-range";
-    target?: string;
-    value?: any;
-  };
-}

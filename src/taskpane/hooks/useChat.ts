@@ -335,10 +335,22 @@ Available actions:
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to write, modify, format, or analyze data in the spreadsheet.
-- You can emit multiple EXCEL_CMD blocks in one response.
+- You can emit multiple EXCEL_CMD blocks in one response to chain operations.
 - Use valid JSON inside the block. Do NOT use markdown code blocks (\`\`\`) inside the EXCEL_CMD block.
 - Be precise with cell references and ranges.
-- If you don't know the exact range, assume A1 is the starting point or ask the user.` : '';
+- If you don't know the exact range, assume A1 is the starting point or ask the user.
+
+Excel Formula Expertise (use these in write_formula):
+- Dynamic Arrays: FILTER(), SORT(), UNIQUE(), SEQUENCE(), SORTBY() — spill results automatically
+- Lookups: XLOOKUP(), XMATCH(), INDEX/MATCH, VLOOKUP(), HLOOKUP()
+- Aggregation: SUMIFS(), COUNTIFS(), AVERAGEIFS(), MAXIFS(), MINIFS()
+- Text: TEXTJOIN(), CONCAT(), LET(), LAMBDA(), TEXTSPLIT(), TEXTBEFORE(), TEXTAFTER()
+- Date: EDATE(), EOMONTH(), WORKDAY(), NETWORKDAYS(), DATEDIF()
+- Financial: NPV(), IRR(), XIRR(), PMT(), FV(), PV(), RATE(), PRICE(), YIELD()
+- Statistical: NORM.DIST(), T.TEST(), LINEST(), FORECAST.ETS(), PERCENTILE()
+- Array formulas with LET() and LAMBDA() for reusable logic
+- Named ranges: prefer named ranges in formulas for readability (e.g. =SUM(Revenue) vs =SUM(B2:B100))` : '';
+
 
     const wordCommandDocs = hostApp === 'Word' ? `
 
@@ -375,7 +387,8 @@ Rules:
 - You can emit multiple PPT_CMD blocks in one response.
 - After each block, briefly confirm what you did.` : '';
 
-    const systemPrompt = `You are an AI Copilot assistant for Microsoft ${hostApp}. You help users with data analysis, formulas, writing, presentations, and more. Be helpful, concise, and provide actionable answers. When providing code, formulas, or structured data, use markdown formatting.${excelCommandDocs}${wordCommandDocs}${pptCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
+    const systemPrompt = `You are an expert AI Copilot for Microsoft ${hostApp} with deep knowledge of spreadsheets, formulas, data analysis, and automation. You help users accomplish complex tasks efficiently and proactively — meaning when asked to do something, you DO it (emit the appropriate command blocks), not just explain how. Be concise, precise, and action-oriented. When providing formulas, code, or structured data, use markdown formatting. Prefer modern Excel functions (XLOOKUP over VLOOKUP, FILTER/SORT/UNIQUE dynamic arrays, LET/LAMBDA for complex logic). When you see data, proactively suggest insights, patterns, or improvements the user may not have considered.${excelCommandDocs}${wordCommandDocs}${pptCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
+
 
     // Ensure we have an active conversation
     let convId = activeConversationId;
