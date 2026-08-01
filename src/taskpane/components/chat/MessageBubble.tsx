@@ -75,7 +75,7 @@ const useStyles = makeStyles({
   },
   bubbleWrapper: {
     ':hover .msg-actions': {
-      opacity: '1 !important' as any,
+      opacity: '1',
     },
   },
   modelBadge: {

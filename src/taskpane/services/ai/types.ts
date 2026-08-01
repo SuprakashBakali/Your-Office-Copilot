@@ -5,6 +5,8 @@ export interface AIRequestOptions {
   maxTokens?: number;
   stream?: boolean;
   webSearch?: boolean;
+  /** Optional AbortSignal — when aborted, the underlying fetch is cancelled. */
+  signal?: AbortSignal;
 }
 
 export interface AIStreamChunk {
@@ -22,9 +24,9 @@ export abstract class BaseAIProvider {
   abstract readonly id: string;
   abstract readonly name: string;
   abstract readonly baseUrl: string;
-  
+
   protected apiKey: string = '';
-  
+
   setApiKey(key: string): void { this.apiKey = key; }
   getApiKey(): string { return this.apiKey; }
   isConfigured(): boolean { return !!this.apiKey || !this.requiresKey(); }
@@ -34,13 +36,24 @@ export abstract class BaseAIProvider {
   abstract chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk>;
 }
 
-// Utility for parsing OpenAI-compatible SSE streams
-export async function* parseOpenAISSEStream(response: Response): AsyncGenerator<AIStreamChunk> {
+// Utility for parsing OpenAI-compatible SSE streams.
+// If an AbortSignal is provided and becomes aborted, the reader is cancelled
+// and the generator returns cleanly.
+export async function* parseOpenAISSEStream(
+  response: Response,
+  signal?: AbortSignal,
+): AsyncGenerator<AIStreamChunk> {
   if (!response.body) throw new Error("No response body");
-  
+
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+
+  const onAbort = () => { reader.cancel().catch(() => {}); };
+  if (signal) {
+    if (signal.aborted) { await reader.cancel().catch(() => {}); return; }
+    signal.addEventListener('abort', onAbort, { once: true });
+  }
 
   try {
     while (true) {
@@ -54,7 +67,7 @@ export async function* parseOpenAISSEStream(response: Response): AsyncGenerator<
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || !trimmed.startsWith("data: ")) continue;
-        
+
         const data = trimmed.slice(6);
         if (data === "[DONE]") {
           yield { content: "", done: true };
@@ -73,6 +86,7 @@ export async function* parseOpenAISSEStream(response: Response): AsyncGenerator<
       }
     }
   } finally {
+    if (signal) signal.removeEventListener('abort', onAbort);
     reader.releaseLock();
   }
 }

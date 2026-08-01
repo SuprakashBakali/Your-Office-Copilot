@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   makeStyles, tokens, Accordion, AccordionItem, AccordionHeader, AccordionPanel,
   Dropdown, Option, Switch, Button, Text, Slider, Dialog, DialogSurface,
-  DialogTitle, DialogBody, DialogActions, DialogTrigger, Badge, Divider,
+  DialogTitle, DialogBody, DialogActions, DialogTrigger, Divider,
 } from '@fluentui/react-components';
 import { DeleteRegular, ArrowExportRegular, ArrowResetRegular, InfoRegular } from '@fluentui/react-icons';
 import { useSettings } from '../../hooks/useSettings';

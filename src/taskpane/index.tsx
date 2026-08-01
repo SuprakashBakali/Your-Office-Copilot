@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { detectOfficeHost } from './services/office/OfficeContext';
 
-Office.onReady((info) => {
+Office.onReady(() => {
   const container = document.getElementById('root');
   if (container) {
     const root = createRoot(container);

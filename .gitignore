@@ -1,8 +1,9 @@
 # Dependencies
 node_modules/
 
-# Build output
+# Build output (webpack emits to /public; tsc no longer emits anything)
 public/
+dist/
 
 # Environment
 .env
@@ -28,8 +29,14 @@ desktop.ini
 *.crt
 *.key
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Personal notes (not for public)
 README_FOR_ME.md
 
 # One-time fix scripts
 fix-hover.js
+
+# ESLint cache
+.eslintcache

@@ -56,6 +56,7 @@ export class GeminiProvider extends BaseAIProvider {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: options.signal,
       body: JSON.stringify(payload)
     });
 
@@ -84,6 +85,7 @@ export class GeminiProvider extends BaseAIProvider {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: options.signal,
       body: JSON.stringify(payload)
     });
 
@@ -94,8 +96,13 @@ export class GeminiProvider extends BaseAIProvider {
     }
 
     if (!response.body) throw new Error("No response body");
-    
+
     const reader = response.body.getReader();
+    const onAbort = () => { reader.cancel().catch(() => {}); };
+    if (options.signal) {
+      if (options.signal.aborted) { await reader.cancel().catch(() => {}); return; }
+      options.signal.addEventListener('abort', onAbort, { once: true });
+    }
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
@@ -131,6 +138,7 @@ export class GeminiProvider extends BaseAIProvider {
       }
       yield { content: "", done: true };
     } finally {
+      if (options.signal) options.signal.removeEventListener('abort', onAbort);
       reader.releaseLock();
     }
   }

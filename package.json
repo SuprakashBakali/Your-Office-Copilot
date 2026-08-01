@@ -1,10 +1,13 @@
 {
   "name": "office-ai-copilot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Professional Your Co-Pilot for Microsoft Office — Excel, Word, PowerPoint. Powered by NVIDIA NIM and multi-provider AI.",
   "author": "Your Co-Pilot",
   "license": "MIT",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "webpack serve --mode development",
     "build": "webpack --mode production",
@@ -13,6 +16,9 @@
     "start:word": "npm run dev",
     "start:powerpoint": "npm run dev",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\" \"*.{js,json}\"",
     "validate:excel": "npx office-addin-manifest validate manifests/excel.xml",
     "validate:word": "npx office-addin-manifest validate manifests/word.xml",
     "validate:powerpoint": "npx office-addin-manifest validate manifests/powerpoint.xml"
@@ -20,23 +26,27 @@
   "dependencies": {
     "@fluentui/react-components": "^9.54.0",
     "@fluentui/react-icons": "^2.0.245",
+    "prism-react-renderer": "^2.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
-    "react-syntax-highlighter": "^15.6.1",
-    "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.14.0",
     "@types/office-js": "^1.0.377",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@types/react-syntax-highlighter": "^15.5.13",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.2",
-    "file-loader": "^6.2.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
     "html-webpack-plugin": "^5.6.0",
     "office-addin-dev-certs": "^1.13.2",
+    "prettier": "^3.3.3",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.5.3",

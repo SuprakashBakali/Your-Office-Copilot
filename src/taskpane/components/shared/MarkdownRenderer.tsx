@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { CodeBlock } from './CodeBlock';
@@ -39,35 +39,45 @@ interface MarkdownRendererProps {
   content: string;
 }
 
+// react-markdown v9 removed the `inline` prop on the `code` component.
+// We detect inline code by checking whether `className` contains
+// `language-*` (block code always has a language class) and whether the
+// node's position spans a single line.
+const components: Components = {
+  code({ node, className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || '');
+    const isBlock = !!match || (node?.position && node.position.start.line !== node.position.end.line);
+    if (isBlock && match) {
+      return (
+        <CodeBlock
+          language={match[1]}
+          value={String(children).replace(/\n$/, '')}
+        />
+      );
+    }
+    return (
+      <code
+        className={className}
+        style={{
+          backgroundColor: tokens.colorNeutralBackground3,
+          padding: '2px 4px',
+          borderRadius: '4px',
+          fontFamily: 'monospace',
+        }}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content }) => {
   const classes = useStyles();
 
   return (
     <div className={classes.container}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          code({ node, inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
-            return !inline && match ? (
-              <CodeBlock
-                language={match[1]}
-                value={String(children).replace(/\n$/, '')}
-                {...props}
-              />
-            ) : (
-              <code className={className} style={{
-                backgroundColor: tokens.colorNeutralBackground3,
-                padding: '2px 4px',
-                borderRadius: '4px',
-                fontFamily: 'monospace'
-              }} {...props}>
-                {children}
-              </code>
-            );
-          }
-        }}
-      >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>
     </div>

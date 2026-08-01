@@ -46,10 +46,11 @@ export class AnthropicProvider extends BaseAIProvider {
 
   async chat(options: AIRequestOptions): Promise<AIResponse> {
     const { system, messages } = this.formatMessages(options.messages);
-    
+
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: options.signal,
       body: JSON.stringify({
         targetUrl: `${this.baseUrl}/messages`,
         headers: this.getHeaders(),
@@ -84,10 +85,11 @@ export class AnthropicProvider extends BaseAIProvider {
 
   async *chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk> {
     const { system, messages } = this.formatMessages(options.messages);
-    
+
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: options.signal,
       body: JSON.stringify({
         targetUrl: `${this.baseUrl}/messages`,
         headers: {

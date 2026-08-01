@@ -7,36 +7,35 @@ import { AIRequestOptions } from '../services/ai/types';
 
 export function useAI() {
   const [isStreaming, setIsStreaming] = useState(false);
-  const [currentStreamText, setCurrentStreamText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [streamedResponse, setStreamedResponse] = useState('');
   const { settings } = useSettings();
   const abortControllerRef = useRef<AbortController | null>(null);
-  const streamTextRef = useRef<string>("");
 
-  const sendMessage = useCallback(async (messages: ChatMessage[], options?: any): Promise<string> => {
-    try {
-      setIsStreaming(true);
-      setError(null);
+  /** Resolve the provider + API key + model id from the active custom model
+   *  (if any) or fall back to the active built-in provider. */
+  const resolveProvider = useCallback(() => {
+    const activeCustomModel = (settings.customModels || []).find(
+      m => m.id === settings.activeCustomModelId,
+    );
+    const apiKey = activeCustomModel?.apiKey || settings.apiKeys[settings.activeProvider] || '';
+    const modelId = activeCustomModel?.modelId ?? settings.activeModel;
 
-      // Resolve provider + key from the active custom model (if any)
-      const activeCustomModel = (settings.customModels || []).find(
-        m => m.id === settings.activeCustomModelId
-      );
-      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[settings.activeProvider] || '';
-      const modelId = activeCustomModel?.modelId ?? settings.activeModel;
+    const provider = activeCustomModel?.baseUrl
+      ? new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey)
+      : getProvider(activeCustomModel?.provider ?? settings.activeProvider);
 
-      // Use GenericOpenAIProvider if custom baseUrl is set, else fall back to registered provider
-      const provider = activeCustomModel?.baseUrl
-        ? new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey)
-        : getProvider(activeCustomModel?.provider ?? settings.activeProvider);
+    if (provider.requiresKey() && !apiKey) {
+      throw new Error(`No API key — add one in Settings → My Models.`);
+    }
+    if (apiKey && !activeCustomModel?.baseUrl) provider.setApiKey(apiKey);
 
-      if (provider.requiresKey() && !apiKey) {
-        throw new Error(`No API key — add one in Settings → My Models.`);
-      }
-      if (apiKey && !activeCustomModel?.baseUrl) provider.setApiKey(apiKey);
+    return { provider, modelId };
+  }, [settings]);
 
-      const requestOptions: AIRequestOptions = {
+  const buildRequestOptions = useCallback(
+    (messages: ChatMessage[], options: any, stream: boolean, signal?: AbortSignal): AIRequestOptions => {
+      const { modelId } = resolveProvider();
+      return {
         model: modelId,
         messages: messages.map(m => ({
           role: m.role as 'system' | 'user' | 'assistant',
@@ -44,92 +43,85 @@ export function useAI() {
         })),
         temperature: 0.7,
         maxTokens: 2048,
-        stream: false,
+        stream,
+        signal,
         ...options,
       };
+    },
+    [resolveProvider],
+  );
 
-      const response = await provider.chat(requestOptions);
-      setIsStreaming(false);
-      return response.content;
-    } catch (err) {
-      setIsStreaming(false);
-      const msg = (err as Error).message;
-      setError(msg);
-      throw err;
-    }
-  }, [settings]);
-
-  const sendMessageStream = useCallback(async (
-    messages: ChatMessage[],
-    options: any,
-    onChunk: (chunk: string) => void
-  ): Promise<string> => {
-    try {
-      setIsStreaming(true);
-      setError(null);
-      setCurrentStreamText("");
-      streamTextRef.current = "";
-
-      abortControllerRef.current = new AbortController();
-
-      // Resolve provider + key from the active custom model (if any)
-      const activeCustomModel = (settings.customModels || []).find(
-        m => m.id === settings.activeCustomModelId
-      );
-      const apiKey = activeCustomModel?.apiKey || settings.apiKeys[settings.activeProvider] || '';
-      const modelId = activeCustomModel?.modelId ?? settings.activeModel;
-
-      // Use GenericOpenAIProvider if custom baseUrl is set, else fall back to registered provider
-      const provider = activeCustomModel?.baseUrl
-        ? new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey)
-        : getProvider(activeCustomModel?.provider ?? settings.activeProvider);
-
-      if (provider.requiresKey() && !apiKey) {
-        throw new Error(`No API key — add one in Settings → My Models.`);
-      }
-      if (apiKey && !activeCustomModel?.baseUrl) provider.setApiKey(apiKey);
-
-      const requestOptions: AIRequestOptions = {
-        model: modelId,
-        messages: messages.map(m => ({
-          role: m.role as 'system' | 'user' | 'assistant',
-          content: m.content,
-        })),
-        temperature: 0.7,
-        maxTokens: 2048,
-        stream: true,
-        ...options,
-      };
-
-      let fullText = "";
-      const stream = provider.chatStream(requestOptions);
-
-      for await (const chunk of stream) {
-        if (abortControllerRef.current?.signal.aborted) {
-          break;
+  const sendMessage = useCallback(
+    async (messages: ChatMessage[], options?: any): Promise<string> => {
+      try {
+        setIsStreaming(true);
+        setError(null);
+        const { provider } = resolveProvider();
+        const requestOptions = buildRequestOptions(messages, options, false);
+        const response = await provider.chat(requestOptions);
+        setIsStreaming(false);
+        return response.content;
+      } catch (err) {
+        setIsStreaming(false);
+        const msg = (err as Error).message;
+        // Don't surface "aborted" as an error — it's a user action.
+        if (msg !== 'Stream cancelled' && !(err as Error).name?.includes('Abort')) {
+          setError(msg);
         }
-        if (chunk.content) {
-          fullText += chunk.content;
-          streamTextRef.current = fullText;
-          setCurrentStreamText(fullText);
-          onChunk(chunk.content);
-        }
-        if (chunk.done) break;
+        throw err;
       }
+    },
+    [resolveProvider, buildRequestOptions],
+  );
 
-      setIsStreaming(false);
-      abortControllerRef.current = null;
-      return fullText;
-    } catch (err) {
-      setIsStreaming(false);
-      abortControllerRef.current = null;
-      const msg = (err as Error).message;
-      if (msg !== "Stream cancelled") {
-        setError(msg);
+  const sendMessageStream = useCallback(
+    async (
+      messages: ChatMessage[],
+      options: any,
+      onChunk: (chunk: string) => void,
+    ): Promise<string> => {
+      try {
+        setIsStreaming(true);
+        setError(null);
+        abortControllerRef.current = new AbortController();
+
+        const { provider } = resolveProvider();
+        const requestOptions = buildRequestOptions(
+          messages,
+          options,
+          true,
+          abortControllerRef.current.signal,
+        );
+
+        let fullText = '';
+        const stream = provider.chatStream(requestOptions);
+
+        for await (const chunk of stream) {
+          if (abortControllerRef.current?.signal.aborted) {
+            break;
+          }
+          if (chunk.content) {
+            fullText += chunk.content;
+            onChunk(chunk.content);
+          }
+          if (chunk.done) break;
+        }
+
+        setIsStreaming(false);
+        abortControllerRef.current = null;
+        return fullText;
+      } catch (err) {
+        setIsStreaming(false);
+        abortControllerRef.current = null;
+        const msg = (err as Error).message;
+        if (msg !== 'Stream cancelled' && !(err as Error).name?.includes('Abort')) {
+          setError(msg);
+        }
+        return '';
       }
-      return streamTextRef.current;
-    }
-  }, [settings]);
+    },
+    [resolveProvider, buildRequestOptions],
+  );
 
   const cancelStream = useCallback(() => {
     if (abortControllerRef.current) {
@@ -145,33 +137,35 @@ export function useAI() {
     // Model switching is handled by settings update
   }, []);
 
-  const testConnection = useCallback(async (provider: AIProviderType, apiKey: string): Promise<{ ok: boolean; error?: string }> => {
-    try {
-      const p = getProvider(provider);
-      p.setApiKey(apiKey);
-      // Use a small, widely-available model for the test ping
-      const models = p.getModels().filter(m => m.id !== '__custom__');
-      const testModel = models.find(m => m.id.includes('8b') || m.id.includes('7b') || m.id.includes('mini'))
-        || models[models.length - 2]  // second to last (before __custom__)
-        || models[0];
-      const response = await p.chat({
-        model: testModel?.id || '',
-        messages: [{ role: 'user', content: 'Hi' }],
-        maxTokens: 5,
-        stream: false,
-      });
-      return { ok: !!response.content };
-    } catch (err) {
-      return { ok: false, error: (err as Error).message };
-    }
-  }, []);
+  const testConnection = useCallback(
+    async (provider: AIProviderType, apiKey: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const p = getProvider(provider);
+        p.setApiKey(apiKey);
+        const models = p.getModels().filter(m => m.id !== '__custom__');
+        const testModel =
+          models.find(m => m.id.includes('8b') || m.id.includes('7b') || m.id.includes('mini')) ||
+          models[models.length - 2] ||
+          models[0];
+        const response = await p.chat({
+          model: testModel?.id || '',
+          messages: [{ role: 'user', content: 'Hi' }],
+          maxTokens: 5,
+          stream: false,
+        });
+        return { ok: !!response.content };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+    },
+    [],
+  );
 
   return {
     sendMessage,
     sendMessageStream,
     cancelStream,
     isStreaming,
-    currentStreamText,
     error,
     switchProvider,
     switchModel,

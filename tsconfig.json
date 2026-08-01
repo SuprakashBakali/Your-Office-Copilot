@@ -12,11 +12,10 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false,
-    "declaration": false,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
+    // Webpack (via ts-loader) emits the build artifacts; tsc is only used for
+    // type-checking (`npm run typecheck`). Setting noEmit avoids dropping
+    // stray .js files into the src tree.
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/taskpane/*"]
@@ -24,5 +23,5 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "public"]
 }

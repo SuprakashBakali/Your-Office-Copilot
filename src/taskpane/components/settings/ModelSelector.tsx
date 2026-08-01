@@ -1,5 +1,5 @@
 import React from 'react';
-import { makeStyles, tokens, Dropdown, Option, Text, Badge } from '@fluentui/react-components';
+import { makeStyles, tokens, Dropdown, Option, Text } from '@fluentui/react-components';
 import { useSettings } from '../../hooks/useSettings';
 
 const useStyles = makeStyles({

@@ -3,15 +3,34 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const devCerts = require("office-addin-dev-certs");
-
-const urlDev = "https://localhost:3000/";
+const webpack = require("webpack");
 
 async function getHttpsOptions() {
   const httpsOptions = await devCerts.getHttpsServerOptions();
   return { ca: httpsOptions.ca, key: httpsOptions.key, cert: httpsOptions.cert };
 }
 
-const webpack = require("webpack");
+// ---- Dev proxy hardening (mirrors api/proxy.js) ----
+const ALLOWED_HOSTS = new Set([
+  "api.openai.com",
+  "api.anthropic.com",
+  "generativelanguage.googleapis.com",
+  "api.groq.com",
+  "openrouter.ai",
+  "integrate.api.nvidia.com",
+  "localhost",
+  "127.0.0.1",
+]);
+
+function isAllowedTarget(targetUrl) {
+  let url;
+  try {
+    url = new URL(targetUrl);
+  } catch {
+    return false;
+  }
+  return url.protocol === "http:" || url.protocol === "https:";
+}
 
 module.exports = async (env, options) => {
   const dev = options.mode === "development";
@@ -30,23 +49,43 @@ module.exports = async (env, options) => {
     optimization: {
       splitChunks: {
         chunks: "all",
+        // Split large vendor libraries into their own cacheable chunks so
+        // that an app-code change doesn't invalidate the user's cache for
+        // React / FluentUI (which change rarely).
+        cacheGroups: {
+          reactVendor: {
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            name: "vendor-react",
+            chunks: "all",
+          },
+          fluentuiVendor: {
+            test: /[\\/]node_modules[\\/]@fluentui[\\/]/,
+            name: "vendor-fluentui",
+            chunks: "all",
+          },
+          markdownVendor: {
+            test: /[\\/]node_modules[\\/](react-markdown|remark-gfm|unified|micromark|remark-parse|mdast-util-.*|micromark-.*|hast-util-.*|unist-util-.*|prism-react-renderer|prismjs)[\\/]/,
+            name: "vendor-markdown",
+            chunks: "all",
+          },
+        },
       },
     },
     resolve: {
       extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".css"],
       fallback: {
-        "zlib": false,
-        "fs": false,
-        "path": false,
-        "crypto": false,
-        "stream": false,
-        "http": false,
-        "https": false,
-        "os": false,
-        "net": false,
-        "tls": false,
-        "child_process": false,
-      }
+        zlib: false,
+        fs: false,
+        path: false,
+        crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        os: false,
+        net: false,
+        tls: false,
+        child_process: false,
+      },
     },
     module: {
       rules: [
@@ -55,9 +94,7 @@ module.exports = async (env, options) => {
           use: [
             {
               loader: "ts-loader",
-              options: {
-                transpileOnly: true,
-              },
+              options: { transpileOnly: true },
             },
           ],
           exclude: /node_modules/,
@@ -69,9 +106,7 @@ module.exports = async (env, options) => {
         {
           test: /\.(png|jpg|jpeg|gif|ico|svg)$/,
           type: "asset/resource",
-          generator: {
-            filename: "assets/[name][ext]",
-          },
+          generator: { filename: "assets/[name][ext]" },
         },
       ],
     },
@@ -91,52 +126,46 @@ module.exports = async (env, options) => {
       }),
       new CopyWebpackPlugin({
         patterns: [
-          {
-            from: "assets",
-            to: "assets",
-            noErrorOnMissing: true,
-          },
-          {
-            from: "manifests",
-            to: "manifests",
-            noErrorOnMissing: true,
-          },
+          { from: "assets", to: "assets", noErrorOnMissing: true },
+          { from: "manifests", to: "manifests", noErrorOnMissing: true },
         ],
       }),
     ],
     devServer: {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: { "Access-Control-Allow-Origin": "*" },
       setupMiddlewares: (middlewares, devServer) => {
-        if (!devServer) throw new Error('webpack-dev-server is not defined');
-        
-        const express = require('express');
-        devServer.app.post('/api/proxy', express.json(), async (req, res) => {
+        if (!devServer) throw new Error("webpack-dev-server is not defined");
+
+        const express = require("express");
+        devServer.app.post("/api/proxy", express.json(), async (req, res) => {
           try {
-            const { targetUrl, headers, body } = req.body;
-            if (!targetUrl) return res.status(400).json({ error: 'targetUrl required' });
+            const { targetUrl, headers, body } = req.body || {};
+            if (!targetUrl || typeof targetUrl !== "string") {
+              return res.status(400).json({ error: "targetUrl required" });
+            }
+            if (!isAllowedTarget(targetUrl)) {
+              return res.status(403).json({ error: "Target URL not allowed. Must be a valid HTTP or HTTPS URL." });
+            }
+
+            const safeHeaders = headers && typeof headers === "object" ? { ...headers } : {};
 
             const fetchOptions = {
-              method: 'POST',
-              headers: headers || {},
-              body: typeof body === 'string' ? body : JSON.stringify(body),
+              method: "POST",
+              headers: safeHeaders,
+              body: typeof body === "string" ? body : JSON.stringify(body),
             };
 
             const response = await fetch(targetUrl, fetchOptions);
             res.status(response.status);
-            
+
             response.headers.forEach((value, key) => {
-              const lowerKey = key.toLowerCase();
-              if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding') {
-                res.setHeader(key, value);
-              }
+              res.setHeader(key, value);
             });
 
             if (!response.body) return res.end();
 
             const reader = response.body.getReader();
-            const decoder = new TextDecoder('utf-8');
+            const decoder = new TextDecoder("utf-8");
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
@@ -144,8 +173,8 @@ module.exports = async (env, options) => {
             }
             res.end();
           } catch (e) {
-            console.error('Proxy dev error:', e);
-            res.status(500).json({ error: e.message });
+            console.error("Proxy dev error:", e);
+            res.status(502).json({ error: e.message });
           }
         });
         return middlewares;
@@ -156,9 +185,7 @@ module.exports = async (env, options) => {
       },
       port: 3000,
       hot: true,
-      static: {
-        directory: path.join(__dirname, "public"),
-      },
+      static: { directory: path.join(__dirname, "public") },
       allowedHosts: "all",
     },
   };
