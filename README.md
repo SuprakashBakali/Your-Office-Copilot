@@ -32,7 +32,7 @@ Unlike traditional AI chat assistants that only give you text to copy and paste,
 
 > **🔍 Search Keywords:** Open source AI office add-in, free alternative to Microsoft Copilot, AI for Excel, AI for Word, AI for PowerPoint, integrate ChatGPT in Excel, Claude in Word, Gemini for Office 365, local LLM Excel add-in, Ollama Office integration.
 
-> **🔒 Privacy First & Zero Telemetry:** Your API keys are encrypted and stored locally in your browser (`localStorage`). Your data is sent _only_ to the AI provider you explicitly configure — never to any third-party server or analytics tracking service.
+> **🔒 Privacy First & Zero Telemetry:** Your API keys are stored locally in your browser (`localStorage`). Your data is sent _only_ to the AI provider you explicitly configure — never to any third-party server or analytics tracking service.
 
 ---
 
@@ -122,7 +122,7 @@ Microsoft Office Add-ins require an `https://` URL. Vercel provides free HTTPS h
    - Copy your deployed Vercel domain URL (e.g., `https://office-ai-copilot.vercel.app`).
 3. **Update Manifests:**
    - Open `manifests/excel.xml`, `manifests/word.xml`, and `manifests/powerpoint.xml`.
-   - Replace all occurrences of `https://localhost:3000` with your new Vercel HTTPS URL.
+   - Replace all occurrences of `https://your-office-copilot.vercel.app` with your new Vercel HTTPS URL.
 4. **Sideload in Microsoft Office:**
    - In Excel, Word, or PowerPoint: Go to **Insert → Add-ins → Upload My Add-in** (or **My Add-ins → Manage My Add-ins → Upload My Add-in**) and select your updated XML manifest file.
 
@@ -143,7 +143,10 @@ npm install
 # 3. Start the Webpack Dev Server with self-signed HTTPS certificates on port 3000
 npm start
 
-# 4. In Excel / Word / PowerPoint, sideload the local manifest:
+# 4. Update local manifest URLs if needed (for local dev, use https://localhost:3000 in manifests):
+# Open manifests/excel.xml and replace https://your-office-copilot.vercel.app with https://localhost:3000
+
+# 5. In Excel / Word / PowerPoint, sideload the local manifest:
 # Insert → Add-ins → Upload My Add-in → manifests/excel.xml
 ```
 

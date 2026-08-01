@@ -47,6 +47,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  // Prevent CORS proxy abuse from unauthorized external domains
+  const allowedOrigins = new Set([
+    'https://your-office-copilot.vercel.app',
+    'https://localhost:3000',
+    'http://localhost:3000',
+  ]);
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.has(origin)) {
+    return res.status(403).json({ error: 'Origin not allowed.' });
+  }
+
   const { targetUrl, headers, body } = req.body || {};
 
   if (!targetUrl || typeof targetUrl !== 'string') {
