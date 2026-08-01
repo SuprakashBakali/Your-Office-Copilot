@@ -1,29 +1,25 @@
 import React from 'react';
 import {
-  makeStyles, tokens, Button, Dropdown, Option, Tooltip,
+  makeStyles, tokens, Button, Tooltip,
   Menu, MenuItem, MenuTrigger, MenuPopover, MenuList
 } from '@fluentui/react-components';
 import {
   Chat20Regular, Settings20Regular, HistoryRegular, AddRegular,
-  ArrowExportRegular, DeleteRegular, DocumentTextRegular,
-  CodeRegular, TextTRegular, WeatherSunny24Regular, WeatherMoon24Regular
+  DeleteRegular
 } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
-import { AppView } from '../../types';
 import { UseChatReturn } from '../../hooks/useChat';
-import { useTheme } from '../../hooks/useTheme';
 
 const useStyles = makeStyles({
   nav: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: '6px',
-    padding: '4px 8px',
+    padding: '6px 12px',
     backgroundColor: tokens.colorNeutralBackground1,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     flexShrink: 0,
-    minHeight: '40px',
+    minHeight: '38px',
   },
   leftSection: {
     display: 'flex',
@@ -33,20 +29,13 @@ const useStyles = makeStyles({
   middleSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    flexGrow: 1,
-    minWidth: 0,
+    gap: '8px',
     justifyContent: 'center',
-  },
-  historyDropdown: {
     flexGrow: 1,
-    minWidth: '100px',
-    maxWidth: '180px',
   },
   rightSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '2px',
     flexShrink: 0,
   },
 });
@@ -59,45 +48,51 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
   const classes = useStyles();
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const { isDark, toggleTheme } = useTheme();
-
-  const handleExport = (format: 'txt' | 'json' | 'markdown') => {
-    if (chat.activeConversation) {
-      chat.exportConversation(chat.activeConversation.id, format);
-    }
-  };
 
   return (
     <div className={classes.nav}>
-      {/* Left: Chat Button */}
+      {/* Left: Chat Icon Button (No Text Label) */}
       <div className={classes.leftSection}>
-        <Button
-          appearance={state.view === 'chat' ? 'subtle' : 'transparent'}
-          icon={<Chat20Regular />}
-          onClick={() => dispatch({ type: 'SET_VIEW', payload: 'chat' })}
-          style={{ fontWeight: state.view === 'chat' ? 600 : 400 }}
-          size="small"
-        >
-          Chat
-        </Button>
+        <Tooltip content="Chat" relationship="label">
+          <Button
+            appearance={state.view === 'chat' ? 'subtle' : 'transparent'}
+            icon={<Chat20Regular />}
+            onClick={() => dispatch({ type: 'SET_VIEW', payload: 'chat' })}
+            size="small"
+          />
+        </Tooltip>
       </div>
 
-      {/* Middle: Chat History / New Chat / Export / Delete (when on Chat tab) */}
+      {/* Middle: History Menu Icon, New Chat Icon, Delete Icon (when in Chat view) */}
       {state.view === 'chat' && (
         <div className={classes.middleSection}>
-          <Tooltip content="Chat history" relationship="label">
-            <HistoryRegular style={{ fontSize: '14px', color: tokens.colorNeutralForeground3, flexShrink: 0 }} />
-          </Tooltip>
-          <Dropdown
-            className={classes.historyDropdown}
-            value={chat.activeConversation?.title || 'New Chat'}
-            onOptionSelect={(_, data) => chat.setActiveConversation(data.optionValue as string)}
-            size="small"
-          >
-            {chat.conversations.map(conv => (
-              <Option key={conv.id} value={conv.id}>{conv.title}</Option>
-            ))}
-          </Dropdown>
+          <Menu>
+            <MenuTrigger disableButtonEnhancement>
+              <Tooltip content="Chat History" relationship="label">
+                <Button icon={<HistoryRegular />} appearance="subtle" size="small" />
+              </Tooltip>
+            </MenuTrigger>
+            <MenuPopover>
+              <MenuList>
+                {chat.conversations.length === 0 ? (
+                  <MenuItem disabled>No chat history</MenuItem>
+                ) : (
+                  chat.conversations.map(conv => (
+                    <MenuItem
+                      key={conv.id}
+                      onClick={() => chat.setActiveConversation(conv.id)}
+                      style={{
+                        fontWeight: conv.id === chat.activeConversation?.id ? 600 : 400,
+                        backgroundColor: conv.id === chat.activeConversation?.id ? tokens.colorNeutralBackground1Selected : undefined
+                      }}
+                    >
+                      {conv.title}
+                    </MenuItem>
+                  ))
+                )}
+              </MenuList>
+            </MenuPopover>
+          </Menu>
 
           <Tooltip content="New Chat" relationship="label">
             <Button
@@ -108,29 +103,8 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
             />
           </Tooltip>
 
-          <Menu>
-            <MenuTrigger>
-              <Tooltip content="Export" relationship="label">
-                <Button icon={<ArrowExportRegular />} appearance="subtle" size="small" />
-              </Tooltip>
-            </MenuTrigger>
-            <MenuPopover>
-              <MenuList>
-                <MenuItem icon={<DocumentTextRegular />} onClick={() => handleExport('markdown')}>
-                  Export as Markdown
-                </MenuItem>
-                <MenuItem icon={<CodeRegular />} onClick={() => handleExport('json')}>
-                  Export as JSON
-                </MenuItem>
-                <MenuItem icon={<TextTRegular />} onClick={() => handleExport('txt')}>
-                  Export as Text
-                </MenuItem>
-              </MenuList>
-            </MenuPopover>
-          </Menu>
-
           {chat.activeConversation && (
-            <Tooltip content="Delete conversation" relationship="label">
+            <Tooltip content="Delete Conversation" relationship="label">
               <Button
                 icon={<DeleteRegular />}
                 appearance="subtle"
@@ -142,24 +116,14 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
         </div>
       )}
 
-      {/* Right: Settings Button & Theme Toggle */}
+      {/* Right: Settings Icon Button (No Text Label) */}
       <div className={classes.rightSection}>
-        <Button
-          appearance={state.view === 'settings' ? 'subtle' : 'transparent'}
-          icon={<Settings20Regular />}
-          onClick={() => dispatch({ type: 'SET_VIEW', payload: 'settings' })}
-          style={{ fontWeight: state.view === 'settings' ? 600 : 400 }}
-          size="small"
-        >
-          Settings
-        </Button>
-
-        <Tooltip content={isDark ? 'Light mode' : 'Dark mode'} relationship="label">
+        <Tooltip content="Settings" relationship="label">
           <Button
-            appearance="transparent"
+            appearance={state.view === 'settings' ? 'subtle' : 'transparent'}
+            icon={<Settings20Regular />}
+            onClick={() => dispatch({ type: 'SET_VIEW', payload: 'settings' })}
             size="small"
-            icon={isDark ? <WeatherSunny24Regular /> : <WeatherMoon24Regular />}
-            onClick={toggleTheme}
           />
         </Tooltip>
       </div>
