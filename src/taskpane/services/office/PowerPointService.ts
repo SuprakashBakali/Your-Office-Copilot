@@ -110,4 +110,57 @@ export class PowerPointService {
       return `Unable to read PowerPoint context: ${(e as Error).message}`;
     }
   }
+
+  // ── From office-agents: PPT eval_js escape hatch ──────────────────────────
+  /**
+   * Execute arbitrary PowerPoint.js code inside PowerPoint.run.
+   * Returns the value returned by the code, or null.
+   */
+  static async evalOfficeJs(code: string): Promise<any> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.1')) {
+      return PowerPoint.run(async (context) => {
+        // eslint-disable-next-line no-new-func
+        const fn = new Function('context', 'PowerPoint', 'Office', `return (async () => { ${code} })()`);
+        const result = await fn(context, PowerPoint, typeof Office !== 'undefined' ? Office : {});
+        return result ?? null;
+      });
+    } else {
+      throw new Error("evalOfficeJs requires PowerPointApi 1.1+.");
+    }
+  }
+
+  // ── From office-agents: list_slide_shapes ─────────────────────────────────
+  /** List all shapes on the active or specified slide. */
+  static async getAllSlideShapes(slideIndex: number = 0): Promise<{ id: string; name: string; type: string }[]> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(slideIndex);
+        const shapes = slide.shapes;
+        shapes.load('items/id, items/name, items/type');
+        await context.sync();
+        return shapes.items.map(s => ({
+          id: s.id,
+          name: s.name,
+          type: s.type
+        }));
+      });
+    } else {
+      return [];
+    }
+  }
+
+  // ── Delete Slide ──────────────────────────────────────────────────────────
+  /** Delete a slide by its 0-based index. */
+  static async deleteSlide(slideIndex: number = 0): Promise<void> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.3')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(slideIndex);
+        slide.delete();
+        await context.sync();
+      });
+    } else {
+      throw new Error("deleteSlide requires PowerPointApi 1.3+.");
+    }
+  }
 }
+

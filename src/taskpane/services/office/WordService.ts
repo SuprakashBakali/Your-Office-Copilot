@@ -142,4 +142,64 @@ export class WordService {
       return `Unable to read Word context: ${(e as Error).message}`;
     }
   }
+
+  // ── From office-agents: Word eval_js escape hatch ─────────────────────────
+  /**
+   * Execute arbitrary Word.js code inside Word.run.
+   * Returns the value returned by the code, or null.
+   */
+  static async evalOfficeJs(code: string): Promise<any> {
+    return Word.run(async (context) => {
+      // eslint-disable-next-line no-new-func
+      const fn = new Function('context', 'Word', 'Office', `return (async () => { ${code} })()`);
+      const result = await fn(context, Word, typeof Office !== 'undefined' ? Office : {});
+      return result ?? null;
+    });
+  }
+
+  // ── From office-agents: get_document_structure ────────────────────────────
+  /** List document headings, paragraphs count, and tables summary. */
+  static async getDocumentStructure(): Promise<{ paragraphsCount: number; headings: string[]; tablesCount: number }> {
+    return Word.run(async (context) => {
+      const paragraphs = context.document.body.paragraphs;
+      const tables = context.document.body.tables;
+      paragraphs.load(['style', 'text']);
+      tables.load('items');
+      await context.sync();
+
+      const headings: string[] = [];
+      let paragraphsCount = 0;
+      paragraphs.items.forEach(p => {
+        paragraphsCount++;
+        const s = (p.style || '').toString().toLowerCase();
+        if (s.includes('heading') || s.includes('title')) {
+          const t = (p.text || '').trim();
+          if (t) headings.push(`${p.style}: ${t}`);
+        }
+      });
+
+      return {
+        paragraphsCount,
+        headings: headings.slice(0, 30),
+        tablesCount: tables.items.length
+      };
+    });
+  }
+
+  // ── Highlight Search ──────────────────────────────────────────────────────
+  /** Highlight matching text across the Word document with a highlight color. */
+  static async searchAndHighlight(findText: string, highlightColor: string = 'Yellow'): Promise<number> {
+    return Word.run(async (context) => {
+      const searchResults = context.document.body.search(findText, { matchCase: false, matchWholeWord: false });
+      searchResults.load('items');
+      await context.sync();
+
+      for (let i = 0; i < searchResults.items.length; i++) {
+        searchResults.items[i].font.highlightColor = highlightColor;
+      }
+      await context.sync();
+      return searchResults.items.length;
+    });
+  }
 }
+

@@ -243,6 +243,26 @@ export async function executeWordCommands(text: string): Promise<ExcelCmdResult>
           await WordService.searchReplace(cmd.find_text, cmd.replace_text);
           results.executed++;
           break;
+        case 'eval_js': {
+          const jsResult = await WordService.evalOfficeJs(cmd.code);
+          results.executed++;
+          if (jsResult !== null && jsResult !== undefined) {
+            results.errors.push(`[Word eval_js result]: ${JSON.stringify(jsResult)}`);
+          }
+          break;
+        }
+        case 'get_structure': {
+          const struct = await WordService.getDocumentStructure();
+          results.executed++;
+          results.errors.push(`[Word structure]: ${JSON.stringify(struct)}`);
+          break;
+        }
+        case 'highlight_search': {
+          const count = await WordService.searchAndHighlight(cmd.find_text, cmd.color || 'Yellow');
+          results.executed++;
+          results.errors.push(`[Highlighted ${count} matches]`);
+          break;
+        }
         default:
           results.errors.push(`Unknown Word action: ${cmd.action}`);
       }
@@ -283,11 +303,30 @@ export async function executePPTCommands(text: string): Promise<ExcelCmdResult> 
           await PowerPointService.setSlideNotes(cmd.notes);
           results.executed++;
           break;
+        case 'eval_js': {
+          const jsResult = await PowerPointService.evalOfficeJs(cmd.code);
+          results.executed++;
+          if (jsResult !== null && jsResult !== undefined) {
+            results.errors.push(`[PPT eval_js result]: ${JSON.stringify(jsResult)}`);
+          }
+          break;
+        }
+        case 'get_shapes': {
+          const shapes = await PowerPointService.getAllSlideShapes(cmd.slide_index || 0);
+          results.executed++;
+          results.errors.push(`[Slide shapes]: ${JSON.stringify(shapes)}`);
+          break;
+        }
+        case 'delete_slide':
+          await PowerPointService.deleteSlide(cmd.slide_index || 0);
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown PPT action: ${cmd.action}`);
       }
     } catch (e) {
       results.errors.push((e as Error).message);
+
     }
   }
   return results;
@@ -441,10 +480,15 @@ Available actions:
 - Apply Style:     <WORD_CMD>{"action":"apply_style","style":"Heading1"}</WORD_CMD>
 - Clear Format:    <WORD_CMD>{"action":"clear_formatting"}</WORD_CMD>
 - Find & Replace:  <WORD_CMD>{"action":"search_replace","find_text":"USA","replace_text":"United States"}</WORD_CMD>
+- Highlight Text:  <WORD_CMD>{"action":"highlight_search","find_text":"important","color":"Yellow"}</WORD_CMD>
+- Get Structure:   <WORD_CMD>{"action":"get_structure"}</WORD_CMD> (returns headings and paragraph counts)
+- Eval JS:         <WORD_CMD>{"action":"eval_js","code":"const body = context.document.body; body.insertParagraph('Hello', 'End'); await context.sync();"}</WORD_CMD>
+    ⚠️ eval_js is an ESCAPE HATCH for Word actions not covered by other commands. Runs inside Word.run with 'context' (Word.RequestContext) available. Always call 'await context.sync()' before returning a value.
 
 Rules:
 - ALWAYS emit a WORD_CMD block when the user asks you to write or modify the document.
-- You can emit multiple WORD_CMD blocks in one response.
+- You can emit multiple WORD_CMD blocks in one response to chain operations.
+- Use valid JSON inside the block. Do NOT use markdown code blocks inside the WORD_CMD block.
 - After each block, briefly confirm what you did.` : '';
 
     const pptCommandDocs = hostApp === 'PowerPoint' ? `
@@ -457,11 +501,17 @@ Available actions:
 - Add Shape:       <PPT_CMD>{"action":"add_shape","shape_type":"Rectangle"}</PPT_CMD>
 - Format Shape:    <PPT_CMD>{"action":"format_shape","shape_index":0,"fill_color":"#FF0000","font_color":"#FFFFFF"}</PPT_CMD>
 - Set Notes:       <PPT_CMD>{"action":"set_slide_notes","notes":"Speaker notes go here."}</PPT_CMD>
+- Get Shapes:      <PPT_CMD>{"action":"get_shapes","slide_index":0}</PPT_CMD> (lists all shapes on a slide)
+- Delete Slide:    <PPT_CMD>{"action":"delete_slide","slide_index":0}</PPT_CMD>
+- Eval JS:         <PPT_CMD>{"action":"eval_js","code":"const slide = context.presentation.slides.getItemAt(0); slide.shapes.addTextBox('Hello'); await context.sync();"}</PPT_CMD>
+    ⚠️ eval_js is an ESCAPE HATCH for PowerPoint actions not covered by other commands. Runs inside PowerPoint.run with 'context' available. Always call 'await context.sync()' before returning a value.
 
 Rules:
 - ALWAYS emit a PPT_CMD block when the user asks you to add slides/shapes/text in PowerPoint.
 - You can emit multiple PPT_CMD blocks in one response.
+- Use valid JSON inside the block. Do NOT use markdown code blocks inside the PPT_CMD block.
 - After each block, briefly confirm what you did.` : '';
+
 
     const systemPrompt = `You are an expert AI Copilot for Microsoft ${hostApp} with deep knowledge of spreadsheets, formulas, data analysis, and automation. You help users accomplish complex tasks efficiently and proactively — meaning when asked to do something, you DO it (emit the appropriate command blocks), not just explain how. Be concise, precise, and action-oriented. When providing formulas, code, or structured data, use markdown formatting. Prefer modern Excel functions (XLOOKUP over VLOOKUP, FILTER/SORT/UNIQUE dynamic arrays, LET/LAMBDA for complex logic). When you see data, proactively suggest insights, patterns, or improvements the user may not have considered.${excelCommandDocs}${wordCommandDocs}${pptCommandDocs}${contextStr ? `\n\nCurrent document context:\n${contextStr}` : ''}`;
 
