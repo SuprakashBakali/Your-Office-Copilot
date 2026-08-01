@@ -24,6 +24,8 @@ const ALLOWED_HOSTS = new Set([
   '127.0.0.1',
 ]);
 
+const MAX_RESPONSE_BYTES = 8 * 1024 * 1024; // 8 MB safety cap
+
 function isAllowedTarget(targetUrl: string): boolean {
   let url: URL;
   try {
@@ -31,7 +33,13 @@ function isAllowedTarget(targetUrl: string): boolean {
   } catch {
     return false;
   }
-  return url.protocol === 'http:' || url.protocol === 'https:';
+  if (url.protocol === 'https:') {
+    return ALLOWED_HOSTS.has(url.hostname);
+  }
+  if (url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
+    return true;
+  }
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -47,12 +55,19 @@ export default async function handler(req, res) {
 
   if (!isAllowedTarget(targetUrl)) {
     return res.status(403).json({
-      error: 'Target URL not allowed. Must be a valid HTTP or HTTPS URL.',
+      error: 'Target URL not allowed. The proxy only permits requests to known AI provider hosts over HTTPS.',
     });
   }
 
-  // Forward headers as requested
-  const safeHeaders = headers && typeof headers === 'object' ? { ...headers } : {};
+  // Sanitize forwarded headers — never forward Host, Content-Length, etc.
+  const safeHeaders = {};
+  if (headers && typeof headers === 'object') {
+    for (const [key, value] of Object.entries(headers)) {
+      const lower = key.toLowerCase();
+      if (lower === 'host' || lower === 'content-length' || lower === 'connection') continue;
+      safeHeaders[key] = value;
+    }
+  }
 
   const fetchOptions = {
     method: 'POST',
@@ -66,21 +81,37 @@ export default async function handler(req, res) {
     // Forward the status
     res.status(response.status);
 
-    // Forward headers
+    // Forward relevant headers, but exclude hop-by-hop / encoding headers
     response.headers.forEach((value, key) => {
-      res.setHeader(key, value);
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey !== 'transfer-encoding' &&
+        lowerKey !== 'content-encoding' &&
+        lowerKey !== 'content-length' &&
+        lowerKey !== 'connection'
+      ) {
+        res.setHeader(key, value);
+      }
     });
 
     if (!response.body) {
       return res.end();
     }
 
+    // Stream the response back with a size cap to prevent abuse.
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
+    let bytesSeen = 0;
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      bytesSeen += value.byteLength;
+      if (bytesSeen > MAX_RESPONSE_BYTES) {
+        await reader.cancel();
+        res.end();
+        return;
+      }
       res.write(decoder.decode(value));
     }
     res.end();

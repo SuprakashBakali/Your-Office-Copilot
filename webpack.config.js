@@ -29,7 +29,9 @@ function isAllowedTarget(targetUrl) {
   } catch {
     return false;
   }
-  return url.protocol === "http:" || url.protocol === "https:";
+  if (url.protocol === "https:") return ALLOWED_HOSTS.has(url.hostname);
+  if (url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1")) return true;
+  return false;
 }
 
 module.exports = async (env, options) => {
@@ -144,10 +146,20 @@ module.exports = async (env, options) => {
               return res.status(400).json({ error: "targetUrl required" });
             }
             if (!isAllowedTarget(targetUrl)) {
-              return res.status(403).json({ error: "Target URL not allowed. Must be a valid HTTP or HTTPS URL." });
+              return res.status(403).json({
+                error: "Target URL not allowed. The proxy only permits requests to known AI provider hosts over HTTPS.",
+              });
             }
 
-            const safeHeaders = headers && typeof headers === "object" ? { ...headers } : {};
+            // Sanitize forwarded headers — never forward Host, Content-Length, etc.
+            const safeHeaders = {};
+            if (headers && typeof headers === "object") {
+              for (const [k, v] of Object.entries(headers)) {
+                const lk = k.toLowerCase();
+                if (lk === "host" || lk === "content-length" || lk === "connection") continue;
+                safeHeaders[k] = v;
+              }
+            }
 
             const fetchOptions = {
               method: "POST",
@@ -159,16 +171,32 @@ module.exports = async (env, options) => {
             res.status(response.status);
 
             response.headers.forEach((value, key) => {
-              res.setHeader(key, value);
+              const lowerKey = key.toLowerCase();
+              if (
+                lowerKey !== "transfer-encoding" &&
+                lowerKey !== "content-encoding" &&
+                lowerKey !== "content-length" &&
+                lowerKey !== "connection"
+              ) {
+                res.setHeader(key, value);
+              }
             });
 
             if (!response.body) return res.end();
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
+            let bytesSeen = 0;
+
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
+              bytesSeen += value.byteLength;
+              if (bytesSeen > 8 * 1024 * 1024) {
+                await reader.cancel();
+                res.end();
+                return;
+              }
               res.write(decoder.decode(value));
             }
             res.end();
