@@ -340,6 +340,7 @@ export function cleanResponseText(text: string): string {
 export function useChat(hostApp: OfficeHostType) {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [includeContext, setIncludeContext] = useState(true);
 
   const ai = useAI();
   const { settings } = useSettings();
@@ -717,6 +718,8 @@ Rules:
     conversations,
     activeConversation,
     messages,
+    includeContext,
+    setIncludeContext,
     createConversation,
     sendChatMessage,
     deleteConversation,

@@ -5,7 +5,7 @@ import {
 } from '@fluentui/react-components';
 import {
   Chat20Regular, Settings20Regular, HistoryRegular, AddRegular,
-  DeleteRegular
+  DeleteRegular, DocumentTextRegular
 } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 import { UseChatReturn } from '../../hooks/useChat';
@@ -15,11 +15,11 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '6px 12px',
+    padding: '8px 12px',
     backgroundColor: tokens.colorNeutralBackground1,
     borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
     flexShrink: 0,
-    minHeight: '38px',
+    minHeight: '40px',
   },
   leftSection: {
     display: 'flex',
@@ -29,7 +29,7 @@ const useStyles = makeStyles({
   middleSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
     justifyContent: 'center',
     flexGrow: 1,
   },
@@ -63,9 +63,21 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
         </Tooltip>
       </div>
 
-      {/* Middle: History Menu Icon, New Chat Icon, Delete Icon (when in Chat view) */}
+      {/* Middle: Context Toggle, History Menu, New Chat, Delete (when in Chat view) */}
       {state.view === 'chat' && (
         <div className={classes.middleSection}>
+          <Tooltip
+            content={chat.includeContext ? 'Context: ON — Click to turn OFF' : 'Context: OFF — Click to turn ON'}
+            relationship="label"
+          >
+            <Button
+              icon={<DocumentTextRegular style={{ color: chat.includeContext ? '#76B900' : tokens.colorNeutralForeground3 }} />}
+              appearance="subtle"
+              size="small"
+              onClick={() => chat.setIncludeContext(!chat.includeContext)}
+            />
+          </Tooltip>
+
           <Menu>
             <MenuTrigger disableButtonEnhancement>
               <Tooltip content="Chat History" relationship="label">
