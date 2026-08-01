@@ -46,7 +46,7 @@ export interface CustomModel {
 
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "compaction_summary";
   content: string;
   timestamp: number;
   model?: string;
@@ -55,6 +55,10 @@ export interface ChatMessage {
   contextIncluded?: boolean;
   /** Tokens used for this message */
   tokens?: number;
+  /** If the AI returned a reasoning/thinking trace (Claude, o1, DeepSeek-R1) */
+  thinking?: string;
+  /** Whether this message has been hidden from the LLM context by compaction */
+  compacted?: boolean;
 }
 
 export interface ChatConversation {

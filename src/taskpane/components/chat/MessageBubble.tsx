@@ -3,6 +3,7 @@ import { makeStyles, tokens, Badge, Button, Tooltip } from '@fluentui/react-comp
 import { PersonRegular, BotRegular, ArrowSyncRegular, TableSimpleRegular } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
+import { ThinkingBlock } from '../shared/ThinkingBlock';
 import { ChatMessage } from '../../types';
 
 const useStyles = makeStyles({
@@ -106,6 +107,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
         )}
       </div>
       <div className={classes.bubbleWrapper}>
+        {!isUser && message.thinking && (
+          <ThinkingBlock thinking={message.thinking} isStreaming={isEmpty} />
+        )}
         <div className={`${classes.bubble} ${isUser ? classes.userBubble : isError ? classes.errorBubble : classes.assistantBubble}`}>
           {isEmpty ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

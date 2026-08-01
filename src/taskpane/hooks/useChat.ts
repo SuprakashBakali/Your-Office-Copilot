@@ -488,57 +488,141 @@ export function useChat(hostApp: OfficeHostType) {
     }));
 
     // 4. Build the AI request payload (system + history).
+    //    Apply conversation compaction: if the recent context is too long,
+    //    ask the AI to summarize older messages into a compaction_summary
+    //    marker so we don't blow the context window.
     const conv = conversationsRef.current.find(c => c.id === convId);
-    const historyMessages: ChatMessage[] = conv?.messages ?? [];
-    const aiMessages: ChatMessage[] = [
-      { id: 'system', role: 'system', content: systemPrompt, timestamp: 0 },
-      ...historyMessages,
-    ];
+    let historyMessages: ChatMessage[] = conv?.messages ?? [];
 
-    // 5. Stream or fetch, then execute commands + clean the display text.
-    const finishAssistant = async (raw: string) => {
-      await executeHostCommands(hostApp, raw);
-      const displayText = cleanResponseText(raw);
-      patchConversation(convId!, c => ({
-        ...c,
-        messages: c.messages.map(m =>
-          m.id === assistantMsgId ? { ...m, content: displayText } : m,
-        ),
-      }));
-    };
+    // Drop the empty assistant placeholder we just added — it should not be
+    // sent to the LLM as context.
+    historyMessages = historyMessages.filter(m => m.id !== assistantMsgId);
 
+    // If compaction is needed, run it (best-effort; if it fails we proceed
+    // with the full history and let the provider's own token limit kick in).
     try {
-      if (activeSettings.streamResponses) {
-        const onChunk = (chunk: string) => {
-          // Live-update the assistant placeholder using a functional state
-          // update so we don't depend on stale `conversations`.
-          setConversations(prev => prev.map(c => {
-            if (c.id !== convId) return c;
-            return {
-              ...c,
-              messages: c.messages.map(m =>
-                m.id === assistantMsgId
-                  ? { ...m, content: m.content + chunk }
-                  : m,
-              ),
-            };
-          }));
-        };
-        const full = await ai.sendMessageStream(aiMessages, { webSearch: webSearchEnabled }, onChunk);
-        await finishAssistant(full);
-      } else {
-        const full = await ai.sendMessage(aiMessages, { webSearch: webSearchEnabled });
-        await finishAssistant(full);
+      const { shouldCompact, buildCompactionPrompt, insertCompactionSummary, sliceContextForLLM } =
+        await import('../services/compaction');
+      const cutIdx = shouldCompact(historyMessages);
+      if (cutIdx !== null) {
+        const summarizable = historyMessages.slice(0, cutIdx);
+        const summaryPrompt = buildCompactionPrompt(summarizable);
+        const summaryResp = await ai.sendMessage(
+          [
+            { id: 'system', role: 'system', content: 'You are a conversation summarizer.', timestamp: 0 },
+            { id: 'user', role: 'user', content: summaryPrompt, timestamp: 0 },
+          ],
+          { maxTokens: 600 },
+        );
+        historyMessages = insertCompactionSummary(historyMessages, cutIdx, summaryResp);
+        // Persist the compaction marker so we don't re-summarize on every turn.
+        patchConversation(convId!, c => ({ ...c, messages: historyMessages }));
+      }
+      // Slice to LLM-visible context (everything from last compaction onward).
+      const llmVisible = sliceContextForLLM(historyMessages);
+      const aiMessages: ChatMessage[] = [
+        { id: 'system', role: 'system', content: systemPrompt, timestamp: 0 },
+        ...llmVisible,
+      ];
+
+      // 5. Stream or fetch, then execute commands + clean the display text.
+      const finishAssistant = async (raw: string, thinking: string = '') => {
+        await executeHostCommands(hostApp, raw);
+        // Strip <think>...</think> blocks if the model inlined them in content
+        // (we already captured them via the thinking channel, but some models
+        // duplicate the trace inside the content stream).
+        const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        const displayText = cleanResponseText(stripped);
+        patchConversation(convId!, c => ({
+          ...c,
+          messages: c.messages.map(m =>
+            m.id === assistantMsgId
+              ? { ...m, content: displayText, thinking: thinking || undefined }
+              : m,
+          ),
+        }));
+      };
+
+      try {
+        if (activeSettings.streamResponses) {
+          const onChunk = (chunk: string) => {
+            setConversations(prev => prev.map(c => {
+              if (c.id !== convId) return c;
+              return {
+                ...c,
+                messages: c.messages.map(m =>
+                  m.id === assistantMsgId
+                    ? { ...m, content: m.content + chunk }
+                    : m,
+                ),
+              };
+            }));
+          };
+          const onThinking = (chunk: string) => {
+            setConversations(prev => prev.map(c => {
+              if (c.id !== convId) return c;
+              return {
+                ...c,
+                messages: c.messages.map(m =>
+                  m.id === assistantMsgId
+                    ? { ...m, thinking: (m.thinking || '') + chunk }
+                    : m,
+                ),
+              };
+            }));
+          };
+          const { text, thinking } = await ai.sendMessageStream(
+            aiMessages,
+            { webSearch: webSearchEnabled },
+            onChunk,
+            onThinking,
+          );
+          await finishAssistant(text, thinking);
+        } else {
+          const full = await ai.sendMessage(aiMessages, { webSearch: webSearchEnabled });
+          await finishAssistant(full);
+        }
+      } catch (err) {
+        patchConversation(convId!, c => ({
+          ...c,
+          messages: c.messages.map(m =>
+            m.id === assistantMsgId
+              ? { ...m, content: `⚠️ Error: ${(err as Error).message}` }
+              : m,
+          ),
+        }));
       }
     } catch (err) {
-      patchConversation(convId!, c => ({
-        ...c,
-        messages: c.messages.map(m =>
-          m.id === assistantMsgId
-            ? { ...m, content: `⚠️ Error: ${(err as Error).message}` }
-            : m,
-        ),
-      }));
+      // Compaction failed — fall back to the legacy behavior of sending
+      // the full history. Better to risk a context overflow than to block
+      // the user from sending their message.
+      console.warn('Compaction skipped:', err);
+      const aiMessages: ChatMessage[] = [
+        { id: 'system', role: 'system', content: systemPrompt, timestamp: 0 },
+        ...historyMessages,
+      ];
+      try {
+        const full = activeSettings.streamResponses
+          ? (await ai.sendMessageStream(aiMessages, { webSearch: webSearchEnabled }, () => {})).text
+          : await ai.sendMessage(aiMessages, { webSearch: webSearchEnabled });
+        await executeHostCommands(hostApp, full);
+        const displayText = cleanResponseText(full.replace(/<think>[\s\S]*?<\/think>/g, '').trim());
+        patchConversation(convId!, c => ({
+          ...c,
+          messages: c.messages.map(m =>
+            m.id === assistantMsgId ? { ...m, content: displayText } : m,
+          ),
+        }));
+      } catch (err2) {
+        patchConversation(convId!, c => ({
+          ...c,
+          messages: c.messages.map(m =>
+            m.id === assistantMsgId
+              ? { ...m, content: `⚠️ Error: ${(err2 as Error).message}` }
+              : m,
+          ),
+        }));
+      }
     }
   }, [hostApp, ai, persistConversations, patchConversation]);
 

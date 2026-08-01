@@ -79,7 +79,8 @@ export function useAI() {
       messages: ChatMessage[],
       options: any,
       onChunk: (chunk: string) => void,
-    ): Promise<string> => {
+      onThinking?: (chunk: string) => void,
+    ): Promise<{ text: string; thinking: string }> => {
       try {
         setIsStreaming(true);
         setError(null);
@@ -94,11 +95,16 @@ export function useAI() {
         );
 
         let fullText = '';
+        let fullThinking = '';
         const stream = provider.chatStream(requestOptions);
 
         for await (const chunk of stream) {
           if (abortControllerRef.current?.signal.aborted) {
             break;
+          }
+          if (chunk.thinking) {
+            fullThinking += chunk.thinking;
+            onThinking?.(chunk.thinking);
           }
           if (chunk.content) {
             fullText += chunk.content;
@@ -109,7 +115,7 @@ export function useAI() {
 
         setIsStreaming(false);
         abortControllerRef.current = null;
-        return fullText;
+        return { text: fullText, thinking: fullThinking };
       } catch (err) {
         setIsStreaming(false);
         abortControllerRef.current = null;
@@ -117,7 +123,7 @@ export function useAI() {
         if (msg !== 'Stream cancelled' && !(err as Error).name?.includes('Abort')) {
           setError(msg);
         }
-        return '';
+        return { text: '', thinking: '' };
       }
     },
     [resolveProvider, buildRequestOptions],

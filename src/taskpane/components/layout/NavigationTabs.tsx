@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   makeStyles, tokens, Button, Tooltip,
-  Menu, MenuItem, MenuTrigger, MenuPopover, MenuList
+  Menu, MenuItem, MenuTrigger, MenuPopover, MenuList,
+  Input,
 } from '@fluentui/react-components';
 import {
   Chat20Regular, Settings20Regular, HistoryRegular, AddRegular,
-  DeleteRegular, DocumentTextRegular
+  DeleteRegular, DocumentTextRegular, SearchRegular, GlobeRegular,
 } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 import { UseChatReturn } from '../../hooks/useChat';
+import { PromptTemplatesPanel } from '../shared/PromptTemplatesPanel';
 
 const useStyles = makeStyles({
   nav: {
@@ -38,20 +40,58 @@ const useStyles = makeStyles({
     alignItems: 'center',
     flexShrink: 0,
   },
+  historySearch: {
+    margin: '4px 8px',
+    width: '220px',
+  },
+  historyItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    minWidth: '220px',
+  },
+  historyItemTitle: {
+    fontSize: tokens.fontSizeBase200,
+  },
+  historyItemMeta: {
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 interface NavigationTabsProps {
   chat: UseChatReturn;
+  /** Whether web search is enabled — controlled here so the toggle stays in sync. */
+  webSearchEnabled?: boolean;
+  onToggleWebSearch?: () => void;
 }
 
-export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
+export const NavigationTabs: React.FC<NavigationTabsProps> = ({
+  chat,
+  webSearchEnabled = false,
+  onToggleWebSearch,
+}) => {
   const classes = useStyles();
   const state = useAppState();
   const dispatch = useAppDispatch();
+  const [historyQuery, setHistoryQuery] = useState('');
+
+  const filteredConversations = useMemo(() => {
+    if (!historyQuery.trim()) return chat.conversations;
+    const q = historyQuery.toLowerCase();
+    return chat.conversations.filter(c =>
+      c.title.toLowerCase().includes(q) ||
+      c.messages.some(m => m.content.toLowerCase().includes(q)),
+    );
+  }, [chat.conversations, historyQuery]);
+
+  const handlePickTemplate = (prompt: string) => {
+    dispatch({ type: 'SET_PENDING_PROMPT', payload: prompt });
+  };
 
   return (
     <div className={classes.nav}>
-      {/* Left: Chat Icon Button (No Text Label) */}
+      {/* Left: Chat Icon Button */}
       <div className={classes.leftSection}>
         <Tooltip content="Chat" relationship="label">
           <Button
@@ -63,7 +103,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
         </Tooltip>
       </div>
 
-      {/* Middle: Context Toggle, History Menu, New Chat, Delete (when in Chat view) */}
+      {/* Middle: Context Toggle, Templates, Web Search, History, New, Delete */}
       {state.view === 'chat' && (
         <div className={classes.middleSection}>
           <Tooltip
@@ -78,6 +118,22 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
             />
           </Tooltip>
 
+          <PromptTemplatesPanel onPick={handlePickTemplate} />
+
+          {onToggleWebSearch && (
+            <Tooltip
+              content={webSearchEnabled ? 'Web Search: ON — Click to turn OFF' : 'Web Search: OFF — Click to turn ON'}
+              relationship="label"
+            >
+              <Button
+                icon={<GlobeRegular style={{ color: webSearchEnabled ? '#76B900' : tokens.colorNeutralForeground3 }} />}
+                appearance="subtle"
+                size="small"
+                onClick={onToggleWebSearch}
+              />
+            </Tooltip>
+          )}
+
           <Menu>
             <MenuTrigger disableButtonEnhancement>
               <Tooltip content="Chat History" relationship="label">
@@ -85,20 +141,35 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
               </Tooltip>
             </MenuTrigger>
             <MenuPopover>
+              <Input
+                className={classes.historySearch}
+                placeholder="Search history..."
+                value={historyQuery}
+                onChange={(_, d) => setHistoryQuery(d.value)}
+                contentBefore={<SearchRegular />}
+                size="small"
+              />
               <MenuList>
-                {chat.conversations.length === 0 ? (
-                  <MenuItem disabled>No chat history</MenuItem>
+                {filteredConversations.length === 0 ? (
+                  <MenuItem disabled>
+                    {chat.conversations.length === 0 ? 'No chat history' : 'No matches'}
+                  </MenuItem>
                 ) : (
-                  chat.conversations.map(conv => (
+                  filteredConversations.map(conv => (
                     <MenuItem
                       key={conv.id}
                       onClick={() => chat.setActiveConversation(conv.id)}
                       style={{
                         fontWeight: conv.id === chat.activeConversation?.id ? 600 : 400,
-                        backgroundColor: conv.id === chat.activeConversation?.id ? tokens.colorNeutralBackground1Selected : undefined
+                        backgroundColor: conv.id === chat.activeConversation?.id ? tokens.colorNeutralBackground1Selected : undefined,
                       }}
                     >
-                      {conv.title}
+                      <div className={classes.historyItem}>
+                        <span className={classes.historyItemTitle}>{conv.title}</span>
+                        <span className={classes.historyItemMeta}>
+                          {conv.messages.length} msgs · {new Date(conv.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
                     </MenuItem>
                   ))
                 )}
@@ -128,7 +199,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({ chat }) => {
         </div>
       )}
 
-      {/* Right: Settings Icon Button (No Text Label) */}
+      {/* Right: Settings Icon Button */}
       <div className={classes.rightSection}>
         <Tooltip content="Settings" relationship="label">
           <Button

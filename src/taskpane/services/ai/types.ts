@@ -12,12 +12,18 @@ export interface AIRequestOptions {
 export interface AIStreamChunk {
   content: string;
   done: boolean;
+  /** Optional reasoning/thinking token from models that stream it separately
+   *  (e.g. DeepSeek-R1 `<think>...</think>` blocks). */
+  thinking?: string;
 }
 
 export interface AIResponse {
   content: string;
   model: string;
   tokens?: { prompt: number; completion: number; total: number };
+  /** Optional reasoning/thinking trace from models that expose it
+   *  (e.g. DeepSeek-R1, Claude w/ extended thinking, OpenAI o1). */
+  thinking?: string;
 }
 
 export abstract class BaseAIProvider {
@@ -76,9 +82,20 @@ export async function* parseOpenAISSEStream(
 
         try {
           const parsed = JSON.parse(data);
-          const content = parsed.choices?.[0]?.delta?.content;
+          const delta = parsed.choices?.[0]?.delta;
+          const content = delta?.content;
+          // DeepSeek-R1 and similar reasoning models expose thinking either as
+          // a separate `reasoning_content` field OR inline wrapped in <think>.
+          // We capture both so the UI can render a collapsible thinking block.
+          const thinking =
+            delta?.reasoning_content ??
+            (typeof content === 'string' && content.startsWith('<think>')
+              ? content
+              : undefined);
           if (content) {
-            yield { content, done: false };
+            yield { content, done: false, thinking };
+          } else if (thinking) {
+            yield { content: '', done: false, thinking };
           }
         } catch (e) {
           console.error("Failed to parse SSE chunk", e);

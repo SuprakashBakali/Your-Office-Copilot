@@ -35,9 +35,10 @@ const useStyles = makeStyles({
 
 interface ChatPanelProps {
   chat: UseChatReturn;
+  webSearchEnabled?: boolean;
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({ chat }) => {
+export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = false }) => {
   const classes = useStyles();
   const { host } = useAppState();
   const {
@@ -55,8 +56,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat }) => {
   }, [messages, isStreaming]);
 
   const handleSend = React.useCallback((text: string) => {
-    sendChatMessage(text, includeContext);
-  }, [sendChatMessage, includeContext]);
+    sendChatMessage(text, includeContext, webSearchEnabled);
+  }, [sendChatMessage, includeContext, webSearchEnabled]);
 
   return (
     <div className={classes.container}>
@@ -71,7 +72,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat }) => {
             onAction={createConversation}
           />
         ) : (
-          messages.filter(m => m.role !== 'system').map(msg => (
+          messages.filter(m => m.role !== 'system' && m.role !== 'compaction_summary').map(msg => (
             <MessageBubble key={msg.id} message={msg} />
           ))
         )}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { NavigationTabs } from './NavigationTabs';
 import { useAppState } from '../../store/AppContext';
@@ -32,6 +32,9 @@ export const Sidebar: React.FC = () => {
   const classes = useStyles();
   const { view, host, notification } = useAppState();
   const chat = useChat(host);
+  // Web search toggle lives here so it persists across chat re-mounts and
+  // stays in sync with the nav bar button.
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   const renderView = () => {
     switch (view) {
@@ -39,13 +42,17 @@ export const Sidebar: React.FC = () => {
         return <SettingsPanel />;
       case 'chat':
       default:
-        return <ChatPanel chat={chat} />;
+        return <ChatPanel chat={chat} webSearchEnabled={webSearchEnabled} />;
     }
   };
 
   return (
     <div className={classes.sidebar}>
-      <NavigationTabs chat={chat} />
+      <NavigationTabs
+        chat={chat}
+        webSearchEnabled={webSearchEnabled}
+        onToggleWebSearch={() => setWebSearchEnabled(v => !v)}
+      />
       <main className={classes.content}>
         {renderView()}
       </main>
