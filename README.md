@@ -40,7 +40,6 @@ Unlike traditional AI chat assistants that only give you text to copy and paste,
 
 | Feature | Microsoft 365 Copilot / Paid Add-ins | **Your Co-Pilot (Open Source)** |
 |---------|:-----------------:|:-----------------:|
-| **Cost** | $30 / user / month ($360/year) | **100% Free** (MIT License) |
 | **Supported AI Providers** | OpenAI GPT-4 Only | **7 Providers** (NVIDIA, Gemini, Groq, OpenRouter, OpenAI, Anthropic, Ollama) |
 | **Offline / Air-Gapped Mode** | ❌ Requires Cloud & Microsoft Account | ✅ **100% Offline Capable** (via local Ollama models) |
 | **Custom Model Integration** | ❌ Locked to official endpoints | ✅ **Custom Model Manager** for any OpenAI-compatible API |
