@@ -725,3 +725,6 @@ Rules:
     setActiveConversation,
   };
 }
+
+export type UseChatReturn = ReturnType<typeof useChat>;
+
