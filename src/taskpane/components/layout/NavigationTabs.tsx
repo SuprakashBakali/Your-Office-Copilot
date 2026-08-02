@@ -10,7 +10,6 @@ import {
 } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 import { UseChatReturn } from '../../hooks/useChat';
-import { PromptTemplatesPanel } from '../shared/PromptTemplatesPanel';
 
 const useStyles = makeStyles({
   nav: {
@@ -85,9 +84,6 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
     );
   }, [chat.conversations, historyQuery]);
 
-  const handlePickTemplate = (prompt: string) => {
-    dispatch({ type: 'SET_PENDING_PROMPT', payload: prompt });
-  };
 
   return (
     <div className={classes.nav}>
@@ -118,7 +114,6 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
             />
           </Tooltip>
 
-          <PromptTemplatesPanel onPick={handlePickTemplate} />
 
           {onToggleWebSearch && (
             <Tooltip

@@ -1,6 +1,6 @@
 import React from 'react';
 import { makeStyles, tokens, Badge, Button, Tooltip } from '@fluentui/react-components';
-import { PersonRegular, BotRegular, ArrowSyncRegular, TableSimpleRegular } from '@fluentui/react-icons';
+import { PersonRegular, BotRegular, ArrowSyncRegular } from '@fluentui/react-icons';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { CopyButton } from '../shared/CopyButton';
 import { ThinkingBlock } from '../shared/ThinkingBlock';
@@ -88,10 +88,9 @@ const useStyles = makeStyles({
 interface MessageBubbleProps {
   message: ChatMessage;
   onRegenerate?: () => void;
-  onApplyToExcel?: (content: string) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message, onRegenerate, onApplyToExcel }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message, onRegenerate }) => {
   const classes = useStyles();
   const isUser = message.role === 'user';
   // Guard against null/undefined content (e.g. from corrupted localStorage
@@ -142,16 +141,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                   size="small"
                   icon={<ArrowSyncRegular />}
                   onClick={onRegenerate}
-                />
-              </Tooltip>
-            )}
-            {onApplyToExcel && content.includes('```') && (
-              <Tooltip content="Apply to Excel" relationship="label">
-                <Button
-                  appearance="transparent"
-                  size="small"
-                  icon={<TableSimpleRegular />}
-                  onClick={() => onApplyToExcel(content)}
                 />
               </Tooltip>
             )}
