@@ -81,6 +81,8 @@ export function useAI() {
       onChunk: (chunk: string) => void,
       onThinking?: (chunk: string) => void,
     ): Promise<{ text: string; thinking: string }> => {
+      let fullText = '';
+      let fullThinking = '';
       try {
         setIsStreaming(true);
         setError(null);
@@ -94,8 +96,6 @@ export function useAI() {
           abortControllerRef.current.signal,
         );
 
-        let fullText = '';
-        let fullThinking = '';
         const stream = provider.chatStream(requestOptions);
 
         for await (const chunk of stream) {
