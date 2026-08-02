@@ -74,15 +74,16 @@ export const SettingsPanel: React.FC = () => {
   };
 
   const handleExportSettings = () => {
-    const data = JSON.stringify(settings, null, 2);
+    const { apiKeys: _apiKeys, ...exportable } = settings;
+    const data = JSON.stringify(exportable, null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'ai-copilot-settings.json';
     a.click();
-    URL.revokeObjectURL(url);
-    dispatch({ type: 'SET_NOTIFICATION', payload: { type: 'success', message: 'Settings exported' } });
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    dispatch({ type: 'SET_NOTIFICATION', payload: { type: 'success', message: 'Settings exported (API keys excluded for security)' } });
   };
 
   return (

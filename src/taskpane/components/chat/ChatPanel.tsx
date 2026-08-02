@@ -50,13 +50,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
   const lastMessage = messages[messages.length - 1];
   const hasError = lastMessage?.role === 'assistant' && (lastMessage.content || '').startsWith('⚠️');
   const messageListRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages — but only if the user is already near the
+  // bottom (within 80px). This prevents the "scroll trap" where the user
+  // tries to scroll up to read earlier messages but gets forced back down
+  // on every streamed chunk.
   useEffect(() => {
-    if (messageListRef.current) {
-      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+    const el = messageListRef.current;
+    if (el && isAtBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages, isStreaming]);
+
+  const handleScroll = () => {
+    const el = messageListRef.current;
+    if (!el) return;
+    isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   const handleSend = React.useCallback((text: string) => {
     sendChatMessage(text, includeContext, webSearchEnabled);
@@ -65,7 +76,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
   return (
     <div className={classes.container}>
       {/* Messages — Maximum vertical screen space */}
-      <div className={classes.messageList} ref={messageListRef}>
+      <div className={classes.messageList} ref={messageListRef} onScroll={handleScroll}>
         {messages.length === 0 ? (
           <EmptyState
             icon={<ChatRegular />}

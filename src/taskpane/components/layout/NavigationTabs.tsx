@@ -162,7 +162,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
                       <div className={classes.historyItem}>
                         <span className={classes.historyItemTitle}>{conv.title}</span>
                         <span className={classes.historyItemMeta}>
-                          {conv.messages.length} msgs · {new Date(conv.updatedAt).toLocaleDateString()}
+                          {conv.messages.filter(m => m.role === 'user' || m.role === 'assistant').length} msgs · {new Date(conv.updatedAt).toLocaleDateString()}
                         </span>
                       </div>
                     </MenuItem>

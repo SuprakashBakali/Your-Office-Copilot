@@ -350,17 +350,18 @@ function cleanThinkingText(thinking: string): string {
   return thinking.replace(/<\/?think>/g, '').trim();
 }
 
-/** Execute any host-specific command blocks found in `text`. */
-async function executeHostCommands(hostApp: OfficeHostType, text: string): Promise<void> {
+/** Execute any host-specific command blocks found in `text`.
+ *  Returns the result { executed, errors } so the caller can surface
+ *  per-command failures to the user. */
+async function executeHostCommands(hostApp: OfficeHostType, text: string): Promise<{ executed: number; errors: string[] } | null> {
   try {
-    if (hostApp === 'Excel') await executeExcelCommands(text);
-    else if (hostApp === 'Word') await executeWordCommands(text);
-    else if (hostApp === 'PowerPoint') await executePPTCommands(text);
+    if (hostApp === 'Excel') return await executeExcelCommands(text);
+    else if (hostApp === 'Word') return await executeWordCommands(text);
+    else if (hostApp === 'PowerPoint') return await executePPTCommands(text);
   } catch (e) {
-    // Command execution errors are surfaced via the results.errors array,
-    // not thrown to the caller — the chat response should still display.
     console.warn('Host command execution failed:', e);
   }
+  return null;
 }
 
 /** Fetch document context (selected range / body / slides) for the host. */
@@ -439,6 +440,8 @@ export function useChat(hostApp: OfficeHostType) {
     const trimmed = next.length > cap ? next.slice(0, cap) : next;
     conversationsRef.current = trimmed;
     setConversations(trimmed);
+    // Skip localStorage writes if the user disabled conversation persistence.
+    if (settingsRef.current.saveConversations === false) return;
     // Debounce the localStorage write — coalesce rapid streaming updates
     // into a single write 300ms after the last chunk.
     if (storageWriteTimer.current) clearTimeout(storageWriteTimer.current);
@@ -572,23 +575,28 @@ export function useChat(hostApp: OfficeHostType) {
 
       // 5. Stream or fetch, then execute commands + clean the display text.
       const finishAssistant = async (raw: string, thinking: string = '') => {
-        await executeHostCommands(hostApp, raw);
-        // Strip <think>...</think> blocks from content (the thinking channel
-        // already captured them separately, but some models duplicate the
-        // trace inside the content stream).
+        const cmdResult = await executeHostCommands(hostApp, raw);
         const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
         const displayText = cleanResponseText(stripped);
-        // Also clean the <think> tags from the thinking field for display.
+        // Surface command execution results so the user knows the AI actually
+        // did something (not just chatted). Show success count AND errors.
+        let commandNote = '';
+        if (cmdResult && cmdResult.executed > 0) {
+          if (cmdResult.errors.length > 0) {
+            commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed. ⚠️ ${cmdResult.errors.length} error(s): ${cmdResult.errors.slice(0, 3).join('; ')}${cmdResult.errors.length > 3 ? '...' : ''}`;
+          } else {
+            commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed successfully.`;
+          }
+        }
         const cleanThinking = thinking ? cleanThinkingText(thinking) : '';
         patchConversation(convId!, c => ({
           ...c,
           messages: c.messages.map(m =>
             m.id === assistantMsgId
-              ? { ...m, content: displayText, thinking: cleanThinking || undefined }
+              ? { ...m, content: displayText + commandNote, thinking: cleanThinking || undefined }
               : m,
           ),
         }));
-        // Flush any pending debounced storage write immediately.
         flushStorageWrite();
       };
 
@@ -659,14 +667,21 @@ export function useChat(hostApp: OfficeHostType) {
         const full = activeSettings.streamResponses
           ? (await ai.sendMessageStream(aiMessages, { webSearch: webSearchEnabled }, () => {})).text
           : await ai.sendMessage(aiMessages, { webSearch: webSearchEnabled });
-        await executeHostCommands(hostApp, full);
+        const cmdResult = await executeHostCommands(hostApp, full);
         const displayText = cleanResponseText(full.replace(/<think>[\s\S]*?<\/think>/g, '').trim());
+        let commandNote = '';
+        if (cmdResult && cmdResult.executed > 0) {
+          commandNote = cmdResult.errors.length > 0
+            ? `\n\n---\n✅ ${cmdResult.executed} command(s) executed. ⚠️ ${cmdResult.errors.length} error(s): ${cmdResult.errors.slice(0, 3).join('; ')}`
+            : `\n\n---\n✅ ${cmdResult.executed} command(s) executed successfully.`;
+        }
         patchConversation(convId!, c => ({
           ...c,
           messages: c.messages.map(m =>
-            m.id === assistantMsgId ? { ...m, content: displayText } : m,
+            m.id === assistantMsgId ? { ...m, content: displayText + commandNote } : m,
           ),
         }));
+        flushStorageWrite();
       } catch (err2) {
         patchConversation(convId!, c => ({
           ...c,
@@ -676,6 +691,7 @@ export function useChat(hostApp: OfficeHostType) {
               : m,
           ),
         }));
+        flushStorageWrite();
       }
     }
   }, [hostApp, ai, persistConversations, patchConversation, flushStorageWrite]);
@@ -683,15 +699,17 @@ export function useChat(hostApp: OfficeHostType) {
   const deleteConversation = useCallback((id: string) => {
     const updated = conversationsRef.current.filter(c => c.id !== id);
     persistConversations(updated);
+    flushStorageWrite();
     if (activeIdRef.current === id) {
       setActiveConversationId(updated.length > 0 ? updated[0].id : null);
     }
-  }, [persistConversations]);
+  }, [persistConversations, flushStorageWrite]);
 
   const clearAllConversations = useCallback(() => {
     persistConversations([]);
+    flushStorageWrite();
     setActiveConversationId(null);
-  }, [persistConversations]);
+  }, [persistConversations, flushStorageWrite]);
 
   const exportConversation = useCallback((id: string, format: 'txt' | 'json' | 'markdown') => {
     const conv = conversationsRef.current.find(c => c.id === id);

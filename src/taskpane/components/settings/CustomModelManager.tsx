@@ -317,46 +317,46 @@ export const CustomModelManager: React.FC = () => {
   const handleTestAll = async () => {
     setIsTestingAll(true);
     setTestRankings([]);
-    
-    let pending = models.length;
-    if (pending === 0) {
+
+    if (models.length === 0) {
       setIsTestingAll(false);
       return;
     }
 
-    models.forEach(async (model) => {
-      let result;
+    const results = await Promise.allSettled(models.map(async (model) => {
       if (!model.apiKey || !model.modelId) {
-        result = { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: 'Missing API Key or Model ID' };
-      } else {
-        const start = performance.now();
-        try {
+        return { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: 'Missing API Key or Model ID' };
+      }
+      const start = performance.now();
+      try {
+        if (model.provider === 'anthropic' && !model.baseUrl) {
+          const { AnthropicProvider } = await import('../../services/ai/AnthropicProvider');
+          const p = new AnthropicProvider();
+          p.setApiKey(model.apiKey);
+          await p.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
+        } else if (model.provider === 'gemini' && !model.baseUrl) {
+          const { GeminiProvider } = await import('../../services/ai/GeminiProvider');
+          const p = new GeminiProvider();
+          p.setApiKey(model.apiKey);
+          await p.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
+        } else {
           const provider = model.baseUrl ? new GenericOpenAIProvider(model.baseUrl, model.apiKey) : getProvider(model.provider);
           if (!model.baseUrl) provider.setApiKey(model.apiKey);
-          
-          await provider.chat({
-            model: model.modelId,
-            messages: [{ role: 'user', content: 'Hi' }],
-            maxTokens: 5,
-            stream: false,
-          });
-          const end = performance.now();
-          result = { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
-        } catch (e) {
-          result = { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: (e as Error).message };
+          await provider.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
         }
+        const end = performance.now();
+        return { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
+      } catch (e) {
+        return { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: (e as Error).message };
       }
-      
-      setTestRankings(prev => {
-        const next = [...prev, result];
-        return next.sort((a, b) => a.latency - b.latency);
-      });
-      
-      pending--;
-      if (pending === 0) {
-        setIsTestingAll(false);
-      }
-    });
+    }));
+
+    const rankings = results.map(r => r.status === 'fulfilled' ? r.value : {
+      id: '', name: '', latency: 999999, status: 'error' as const, error: 'Unknown error',
+    }).filter(r => r.id);
+
+    setTestRankings(rankings.sort((a, b) => a.latency - b.latency));
+    setIsTestingAll(false);
   };
 
   return (
