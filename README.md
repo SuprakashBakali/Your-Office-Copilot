@@ -18,9 +18,7 @@
   <img src="https://img.shields.io/badge/Office.js-Add--in-D83B01?style=for-the-badge&logo=microsoftoffice&logoColor=white" alt="Office.js Add-in" />
 </p>
 
-<p align="center">
-  <img src="assets/preview.jpg" alt="Your Co-Pilot Preview" width="550" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);" />
-</p>
+
 
 ---
 
@@ -40,7 +38,6 @@ Unlike traditional AI chat assistants that only give you text to copy and paste,
 
 | Feature | Microsoft 365 Copilot / Paid Add-ins | **Your Co-Pilot (Open Source)** |
 |---------|:-----------------:|:-----------------:|
-| **Supported AI Providers** | OpenAI GPT-4 Only | **7 Providers** (NVIDIA, Gemini, Groq, OpenRouter, OpenAI, Anthropic, Ollama) |
 | **Offline / Air-Gapped Mode** | ❌ Requires Cloud & Microsoft Account | ✅ **100% Offline Capable** (via local Ollama models) |
 | **Custom Model Integration** | ❌ Locked to official endpoints | ✅ **Custom Model Manager** for any OpenAI-compatible API |
 | **Excel Autonomous Actions** | ✅ Formulas & charts | ✅ **40+ direct commands** + sandboxed JavaScript `eval_js` |
