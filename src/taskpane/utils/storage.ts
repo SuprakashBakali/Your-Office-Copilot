@@ -5,6 +5,15 @@
 import { AppSettings, ChatConversation, AIProviderType } from "../types";
 
 const STORAGE_PREFIX = "office-ai-copilot";
+const PROVIDERS: AIProviderType[] = [
+  "nvidia",
+  "openai",
+  "anthropic",
+  "gemini",
+  "groq",
+  "openrouter",
+  "ollama",
+];
 
 const KEYS = {
   settings: `${STORAGE_PREFIX}:settings`,
@@ -76,11 +85,8 @@ export function loadSettings(): AppSettings {
   const settings = { ...DEFAULT_SETTINGS, ...saved };
 
   // Load API keys separately (stored individually for safety)
-  const providers: AIProviderType[] = [
-    "nvidia", "openai", "anthropic", "gemini", "groq", "openrouter", "ollama",
-  ];
   const apiKeys: Partial<Record<AIProviderType, string>> = {};
-  for (const p of providers) {
+  for (const p of PROVIDERS) {
     const key = getItem<string>(KEYS.apiKey(p), "");
     if (key) apiKeys[p] = key;
   }
@@ -101,6 +107,12 @@ export function saveSettings(settings: AppSettings): void {
       } else {
         removeItem(KEYS.apiKey(provider as AIProviderType));
       }
+    }
+  }
+  // Ensure removed/reset keys are deleted from storage even if apiKeys is empty.
+  for (const provider of PROVIDERS) {
+    if (!apiKeys?.[provider]) {
+      removeItem(KEYS.apiKey(provider));
     }
   }
 }

@@ -382,12 +382,12 @@ async function fetchHostContext(hostApp: OfficeHostType): Promise<string> {
 }
 
 export function useChat(hostApp: OfficeHostType) {
+  const { settings } = useSettings();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [includeContext, setIncludeContext] = useState(true);
+  const [includeContext, setIncludeContext] = useState(settings.includeContextByDefault);
 
   const ai = useAI();
-  const { settings } = useSettings();
 
   // Keep latest settings/conversations accessible inside async callbacks
   // without re-creating the callback on every state change.
@@ -426,6 +426,11 @@ export function useChat(hostApp: OfficeHostType) {
       }
     };
   }, []);
+
+  // Keep the chat toggle in sync with the default-context setting.
+  useEffect(() => {
+    setIncludeContext(settings.includeContextByDefault);
+  }, [settings.includeContextByDefault]);
 
   const activeConversation = conversations.find(c => c.id === activeConversationId) || null;
   const messages = activeConversation?.messages || [];

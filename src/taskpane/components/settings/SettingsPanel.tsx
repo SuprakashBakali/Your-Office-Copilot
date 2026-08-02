@@ -8,6 +8,7 @@ import { DeleteRegular, ArrowExportRegular, ArrowResetRegular, InfoRegular } fro
 import { useSettings } from '../../hooks/useSettings';
 import { useTheme } from '../../hooks/useTheme';
 import { CustomModelManager } from './CustomModelManager';
+import { ApiKeyManager } from './ApiKeyManager';
 import { useAppDispatch } from '../../store/AppContext';
 import { clearAllData } from '../../utils/storage';
 
@@ -100,6 +101,23 @@ export const SettingsPanel: React.FC = () => {
               Add models with their own provider and API key. Each model can use a different provider.
             </Text>
             <CustomModelManager />
+          </AccordionPanel>
+        </AccordionItem>
+
+        {/* API Keys */}
+        <AccordionItem value="keys">
+          <AccordionHeader>🔑 Provider API Keys</AccordionHeader>
+          <AccordionPanel className={classes.section}>
+            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+              Configure API keys for built-in providers.
+            </Text>
+            <ApiKeyManager provider="nvidia" />
+            <ApiKeyManager provider="openai" />
+            <ApiKeyManager provider="anthropic" />
+            <ApiKeyManager provider="gemini" />
+            <ApiKeyManager provider="groq" />
+            <ApiKeyManager provider="openrouter" />
+            <ApiKeyManager provider="ollama" />
           </AccordionPanel>
         </AccordionItem>
 
