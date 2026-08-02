@@ -138,20 +138,34 @@ export class ExcelService {
     });
   }
 
-  static async writeToRange(address: string, values: any[][]): Promise<void> {
+  static async writeToRange(address: string, values: any[][], sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.values = values;
       await context.sync();
     });
   }
 
-  static async insertFormula(address: string, formula: string): Promise<void> {
+  static async insertFormula(address: string, formula: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.formulas = [[formula]];
+      await context.sync();
+    });
+  }
+
+  /** Activate a worksheet by name — all subsequent commands that default to
+   *  the active sheet will target this sheet. */
+  static async activateSheet(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getItem(name);
+      sheet.activate();
       await context.sync();
     });
   }
@@ -179,9 +193,11 @@ export class ExcelService {
     });
   }
 
-  static async createChart(type: string, dataRange: string, title: string): Promise<void> {
+  static async createChart(type: string, dataRange: string, title: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(dataRange);
       let chartType = Excel.ChartType.columnClustered;
       const t = type.toLowerCase();
@@ -215,9 +231,11 @@ export class ExcelService {
     });
   }
 
-  static async clearRange(address: string): Promise<void> {
+  static async clearRange(address: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.clear();
       await context.sync();
@@ -226,14 +244,17 @@ export class ExcelService {
 
   static async formatRange(
     address: string,
-    opts: { 
+    opts: {
       bold?: boolean; italic?: boolean; backgroundColor?: string; fontColor?: string; fontSize?: number;
-      wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General"; 
-      verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string 
+      wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General";
+      verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string
+      sheet?: string
     }
   ): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = opts.sheet
+        ? context.workbook.worksheets.getItem(opts.sheet)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       if (opts.bold !== undefined) range.format.font.bold = opts.bold;
       if (opts.italic !== undefined) range.format.font.italic = opts.italic;
@@ -618,6 +639,20 @@ export class ExcelService {
 
   static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
+      // 1. Get workbook overview — ALL sheets with their dimensions, so the
+      //    AI knows what data exists across the entire workbook (not just
+      //    the active sheet). This is critical for commands like "build a
+      //    dashboard on a new sheet based on Sheet1 data".
+      const wbInfo = await this.getWorkbookInfo();
+      let res = `Workbook: ${wbInfo.name}\nActive Sheet: ${wbInfo.activeSheet}\n\nAll Sheets:`;
+      for (const s of wbInfo.sheets) {
+        const dim = s.rowCount && s.columnCount
+          ? `${s.rowCount} rows × ${s.columnCount} cols (used range: ${s.usedRangeAddress})`
+          : 'empty';
+        res += `\n  - ${s.name}${s.isVisible ? '' : ' (hidden)'}: ${dim}`;
+      }
+
+      // 2. Get the active sheet's data (selection or used range).
       const data = await this.getSelectedRange();
       let target = data;
       let label = 'Selected Range';
@@ -630,9 +665,12 @@ export class ExcelService {
         target.values,
         maxCells,
       );
-      let res = `Active Sheet: ${target.sheetName}\n${label}: ${target.address}\nData:\n${formatted}`;
+      res += `\n\n${label} on "${target.sheetName}": ${target.address}\nData:\n${formatted}`;
       if (isTruncated) {
-        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows in range to conserve tokens)`;
+        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows to conserve tokens. Use get_sheet_data to read other sheets.)`;
+      }
+      if (wbInfo.namedRanges && wbInfo.namedRanges.length > 0) {
+        res += `\n\nNamed Ranges: ${wbInfo.namedRanges.join(', ')}`;
       }
       return res;
     } catch (e) {
@@ -870,9 +908,11 @@ export class ExcelService {
 
   // ── From office-agents: get_range_as_csv (token-efficient read) ──────────
   /** Read a range as CSV text — much more token-efficient than JSON for large data. */
-  static async getRangeAsCsv(address: string, maxRows: number = 500): Promise<string> {
+  static async getRangeAsCsv(address: string, maxRows: number = 500, sheetName?: string): Promise<string> {
     return Excel.run(async (context) => {
-      const ws = context.workbook.worksheets.getActiveWorksheet();
+      const ws = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = ws.getRange(address);
       range.load(['values', 'rowCount']);
       await context.sync();

@@ -19,19 +19,19 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
       const cmd = JSON.parse(match[1].trim());
       switch (cmd.action) {
         case 'write_cell':
-          await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);
+          await ExcelService.writeToRange(cmd.cell, [[cmd.value]], cmd.sheet);
           results.executed++;
           break;
         case 'write_formula':
-          await ExcelService.insertFormula(cmd.cell, cmd.formula);
+          await ExcelService.insertFormula(cmd.cell, cmd.formula, cmd.sheet);
           results.executed++;
           break;
         case 'write_range':
-          await ExcelService.writeToRange(cmd.range, cmd.values);
+          await ExcelService.writeToRange(cmd.range, cmd.values, cmd.sheet);
           results.executed++;
           break;
         case 'create_chart':
-          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title);
+          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title, cmd.sheet);
           results.executed++;
           break;
         case 'delete_chart':
@@ -43,15 +43,19 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           results.executed++;
           break;
         case 'clear_range':
-          await ExcelService.clearRange(cmd.range);
+          await ExcelService.clearRange(cmd.range, cmd.sheet);
           results.executed++;
           break;
         case 'format_range':
-          await ExcelService.formatRange(cmd.range, cmd.options);
+          await ExcelService.formatRange(cmd.range, { ...cmd.options, sheet: cmd.sheet });
           results.executed++;
           break;
         case 'add_sheet':
           await ExcelService.addSheet(cmd.name);
+          results.executed++;
+          break;
+        case 'activate_sheet':
+          await ExcelService.activateSheet(cmd.name);
           results.executed++;
           break;
         case 'delete_sheet':
@@ -171,9 +175,21 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           break;
         }
         case 'get_range_csv': {
-          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows);
+          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows, cmd.sheet);
           results.executed++;
           results.errors.push(`[CSV data]:\n${csv}`);
+          break;
+        }
+        case 'get_sheet_data': {
+          const { ExcelService: ES } = await import('../services/office/ExcelService');
+          const sheetData = await ES.getSheetData(cmd.sheet);
+          const { formatted: sheetFormatted, isTruncated: sheetTrunc, rowsShown: sheetRows, totalRows: sheetTotal } =
+            (ES as any).formatCellValuesForAI ? (ES as any).formatCellValuesForAI(sheetData.values, 1000)
+            : { formatted: JSON.stringify(sheetData.values?.slice(0, 100)), isTruncated: false, rowsShown: 0, totalRows: 0 };
+          results.executed++;
+          let dataStr = `Sheet "${cmd.sheet}" (${sheetData.rowCount} rows × ${sheetData.columnCount} cols, range: ${sheetData.address}):\n${sheetFormatted}`;
+          if (sheetTrunc) dataStr += `\n(Showing first ${sheetRows} of ${sheetTotal} rows)`;
+          results.errors.push(`[sheet data]: ${dataStr}`);
           break;
         }
         case 'freeze_panes':
