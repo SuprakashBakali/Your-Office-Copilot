@@ -147,19 +147,29 @@ export function useAI() {
     async (provider: AIProviderType, apiKey: string): Promise<{ ok: boolean; error?: string }> => {
       try {
         const p = getProvider(provider);
+        // Save the original key so we can restore it after the test.
+        // ProviderFactory stores providers as SINGLETONS — if we mutate the
+        // key here and don't restore it, subsequent real requests would use
+        // the test key instead of the user's actual key.
+        const originalKey = p.getApiKey();
         p.setApiKey(apiKey);
-        const models = p.getModels().filter(m => m.id !== '__custom__');
-        const testModel =
-          models.find(m => m.id.includes('8b') || m.id.includes('7b') || m.id.includes('mini')) ||
-          models[models.length - 2] ||
-          models[0];
-        const response = await p.chat({
-          model: testModel?.id || '',
-          messages: [{ role: 'user', content: 'Hi' }],
-          maxTokens: 5,
-          stream: false,
-        });
-        return { ok: !!response.content };
+        try {
+          const models = p.getModels().filter(m => m.id !== '__custom__');
+          const testModel =
+            models.find(m => m.id.includes('8b') || m.id.includes('7b') || m.id.includes('mini') || m.id.includes('flash') || m.id.includes('haiku')) ||
+            models[models.length - 2] ||
+            models[0];
+          const response = await p.chat({
+            model: testModel?.id || '',
+            messages: [{ role: 'user', content: 'Hi' }],
+            maxTokens: 5,
+            stream: false,
+          });
+          return { ok: !!response.content };
+        } finally {
+          // Restore the original key so the singleton isn't left mutated.
+          p.setApiKey(originalKey);
+        }
       } catch (err) {
         return { ok: false, error: (err as Error).message };
       }

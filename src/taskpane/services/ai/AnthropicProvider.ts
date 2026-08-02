@@ -11,9 +11,13 @@ export class AnthropicProvider extends BaseAIProvider {
 
   getModels() {
     return [
-      { id: 'claude-sonnet-4-20250514', name: 'Claude 3.5 Sonnet' },
+      // Updated model IDs and display names to match Anthropic's 2025 lineup.
+      // Previous: claude-sonnet-4-20250514 was labelled 'Claude 3.5 Sonnet' (misleading),
+      // and claude-3-opus-20240229 is deprecated by Anthropic.
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
       { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
-      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' }
+      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus (legacy)' },
     ];
   }
 
@@ -114,8 +118,15 @@ export class AnthropicProvider extends BaseAIProvider {
     }
 
     if (!response.body) throw new Error("No response body");
-    
+
     const reader = response.body.getReader();
+    // Register an abort listener so cancelStream() actually cancels the
+    // in-flight reader — not just the fetch wrapper.
+    const onAbort = () => { reader.cancel().catch(() => {}); };
+    if (options.signal) {
+      if (options.signal.aborted) { await reader.cancel().catch(() => {}); return; }
+      options.signal.addEventListener('abort', onAbort, { once: true });
+    }
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
@@ -158,6 +169,7 @@ export class AnthropicProvider extends BaseAIProvider {
         }
       }
     } finally {
+      if (options.signal) options.signal.removeEventListener('abort', onAbort);
       reader.releaseLock();
     }
   }

@@ -16,10 +16,16 @@ export function useSettings() {
   }, []);
 
   const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
-    const current = loadSettings();
-    const updated = { ...current, ...newSettings };
-    saveSettings(updated);
-    setSettingsState(updated);
+    // Use the React state value as the base instead of re-reading from disk.
+    // loadSettings() does a synchronous localStorage.getItem + JSON.parse on
+    // every call — if multiple components call updateSettings in rapid
+    // succession (e.g. slider dragging), each reads stale state and
+    // overwrites the previous call's changes.
+    setSettingsState(prev => {
+      const updated = { ...prev, ...newSettings };
+      saveSettings(updated);
+      return updated;
+    });
     window.dispatchEvent(new Event('settingsUpdated'));
   }, []);
 
@@ -35,11 +41,13 @@ export function useSettings() {
   }, [settings]);
 
   const setApiKey = useCallback((provider: AIProviderType, apiKey: string) => {
-    const current = loadSettings();
-    const updatedKeys = { ...current.apiKeys, [provider]: apiKey };
-    const updated = { ...current, apiKeys: updatedKeys };
-    saveSettings(updated);
-    setSettingsState(updated);
+    // Use functional state update to avoid reading stale settings.
+    setSettingsState(prev => {
+      const updatedKeys = { ...prev.apiKeys, [provider]: apiKey };
+      const updated = { ...prev, apiKeys: updatedKeys };
+      saveSettings(updated);
+      return updated;
+    });
     window.dispatchEvent(new Event('settingsUpdated'));
   }, []);
 

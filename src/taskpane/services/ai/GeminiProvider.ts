@@ -9,10 +9,14 @@ export class GeminiProvider extends BaseAIProvider {
 
   getModels() {
     return [
-      { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash' },
-      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro' },
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash' },
-      { id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro' }
+      // Updated to real Gemini API model IDs (2025).
+      // Previous IDs gemini-3.6-flash / gemini-3.1-pro-preview do NOT exist
+      // on the API and caused immediate 404 errors.
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
     ];
   }
 
@@ -35,7 +39,7 @@ export class GeminiProvider extends BaseAIProvider {
     if (systemInstruction) {
       payload.systemInstruction = systemInstruction;
     }
-    
+
     payload.generationConfig = {
       temperature: options.temperature,
       maxOutputTokens: options.maxTokens
@@ -49,13 +53,24 @@ export class GeminiProvider extends BaseAIProvider {
     return payload;
   }
 
+  /** Build headers with the API key in the x-goog-api-key header instead of
+   *  the URL query string. Putting the key in the URL exposes it in DevTools
+   *  network tab, Referer headers, and server access logs. */
+  private getHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': this.apiKey,
+    };
+  }
+
   async chat(options: AIRequestOptions): Promise<AIResponse> {
     const payload = this.formatRequest(options);
-    const url = `${this.baseUrl}/models/${options.model}:generateContent?key=${this.apiKey}`;
-    
+    // Key is now in the header, NOT in the URL.
+    const url = `${this.baseUrl}/models/${options.model}:generateContent`;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       signal: options.signal,
       body: JSON.stringify(payload)
     });
@@ -80,11 +95,12 @@ export class GeminiProvider extends BaseAIProvider {
 
   async *chatStream(options: AIRequestOptions): AsyncGenerator<AIStreamChunk> {
     const payload = this.formatRequest(options);
-    const url = `${this.baseUrl}/models/${options.model}:streamGenerateContent?key=${this.apiKey}&alt=sse`;
-    
+    // Key is now in the header, NOT in the URL.
+    const url = `${this.baseUrl}/models/${options.model}:streamGenerateContent?alt=sse`;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders(),
       signal: options.signal,
       body: JSON.stringify(payload)
     });
@@ -118,7 +134,7 @@ export class GeminiProvider extends BaseAIProvider {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || !trimmed.startsWith("data: ")) continue;
-          
+
           const dataStr = trimmed.slice(6);
           if (dataStr === "[DONE]") {
             yield { content: "", done: true };
