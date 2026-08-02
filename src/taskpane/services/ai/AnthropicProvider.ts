@@ -73,7 +73,7 @@ export class AnthropicProvider extends BaseAIProvider {
 
     const data = await response.json();
     return {
-      content: data.content[0].text,
+      content: data.content?.[0]?.text ?? '',
       model: data.model,
       tokens: {
         prompt: data.usage?.input_tokens ?? 0,

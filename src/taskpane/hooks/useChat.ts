@@ -332,9 +332,22 @@ export async function executePPTCommands(text: string): Promise<ExcelCmdResult> 
   return results;
 }
 
-/** Strip <*_CMD>...</*_CMD> blocks from displayed text */
+/** Strip <*_CMD>...</*_CMD> blocks from displayed text.
+ *  Also strips unclosed command blocks (e.g. when the model is cut off
+ *  mid-generation) so the raw <EXCEL_CMD> tag doesn't leak into the UI. */
 export function cleanResponseText(text: string): string {
-  return text.replace(/<(EXCEL|WORD|PPT)_CMD>([/\s\S]*?)<\/\1_CMD>/g, '').trim();
+  return text
+    .replace(/<(EXCEL|WORD|PPT)_CMD>([/\s\S]*?)<\/\1_CMD>/g, '')   // closed blocks
+    .replace(/<(EXCEL|WORD|PPT)_CMD>[/\s\S]*$/g, '')               // unclosed blocks (to end)
+    .trim();
+}
+
+/** Strip <think>...</think> tags from the thinking field for display.
+ *  The tags themselves are captured as thinking chunks (see parseOpenAISSEStream)
+ *  so we know where the block starts/ends — but the user doesn't need to see
+ *  the literal <think> tags in the UI. */
+function cleanThinkingText(thinking: string): string {
+  return thinking.replace(/<\/?think>/g, '').trim();
 }
 
 /** Execute any host-specific command blocks found in `text`. */
@@ -384,23 +397,55 @@ export function useChat(hostApp: OfficeHostType) {
   const activeIdRef = useRef(activeConversationId);
   activeIdRef.current = activeConversationId;
 
+  // Debounce localStorage writes during streaming so we don't do a
+  // JSON.stringify + setItem on every single chunk (which can be 1000+
+  // times for a long response). The ref + React state still update
+  // synchronously so the UI stays live — only the disk write is debounced.
+  const storageWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushStorageWrite = useCallback(() => {
+    if (storageWriteTimer.current) {
+      clearTimeout(storageWriteTimer.current);
+      storageWriteTimer.current = null;
+    }
+    saveConversations(conversationsRef.current);
+  }, []);
+
   useEffect(() => {
     const loaded = loadConversations();
     setConversations(loaded);
     if (loaded.length > 0) {
       setActiveConversationId(loaded[0].id);
     }
+    // Flush any pending debounced storage write on unmount so we don't
+    // lose the last few streamed chunks if the user closes the taskpane.
+    return () => {
+      if (storageWriteTimer.current) {
+        clearTimeout(storageWriteTimer.current);
+        saveConversations(conversationsRef.current);
+      }
+    };
   }, []);
 
   const activeConversation = conversations.find(c => c.id === activeConversationId) || null;
   const messages = activeConversation?.messages || [];
 
-  /** Persist conversations, enforcing the max-history cap from settings. */
+  /** Persist conversations, enforcing the max-history cap from settings.
+   *  Updates conversationsRef.current SYNCHRONOUSLY so that subsequent
+   *  reads in the same async tick (e.g. inside sendChatMessage) see the
+   *  latest state. The localStorage write is debounced to avoid a write
+   *  storm during streaming. */
   const persistConversations = useCallback((next: ChatConversation[]) => {
     const cap = settingsRef.current.maxConversationHistory || 50;
     const trimmed = next.length > cap ? next.slice(0, cap) : next;
+    conversationsRef.current = trimmed;
     setConversations(trimmed);
-    saveConversations(trimmed);
+    // Debounce the localStorage write — coalesce rapid streaming updates
+    // into a single write 300ms after the last chunk.
+    if (storageWriteTimer.current) clearTimeout(storageWriteTimer.current);
+    storageWriteTimer.current = setTimeout(() => {
+      saveConversations(conversationsRef.current);
+      storageWriteTimer.current = null;
+    }, 300);
   }, []);
 
   const createConversation = useCallback(() => {
@@ -528,25 +573,32 @@ export function useChat(hostApp: OfficeHostType) {
       // 5. Stream or fetch, then execute commands + clean the display text.
       const finishAssistant = async (raw: string, thinking: string = '') => {
         await executeHostCommands(hostApp, raw);
-        // Strip <think>...</think> blocks if the model inlined them in content
-        // (we already captured them via the thinking channel, but some models
-        // duplicate the trace inside the content stream).
+        // Strip <think>...</think> blocks from content (the thinking channel
+        // already captured them separately, but some models duplicate the
+        // trace inside the content stream).
         const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
         const displayText = cleanResponseText(stripped);
+        // Also clean the <think> tags from the thinking field for display.
+        const cleanThinking = thinking ? cleanThinkingText(thinking) : '';
         patchConversation(convId!, c => ({
           ...c,
           messages: c.messages.map(m =>
             m.id === assistantMsgId
-              ? { ...m, content: displayText, thinking: thinking || undefined }
+              ? { ...m, content: displayText, thinking: cleanThinking || undefined }
               : m,
           ),
         }));
+        // Flush any pending debounced storage write immediately.
+        flushStorageWrite();
       };
 
       try {
         if (activeSettings.streamResponses) {
           const onChunk = (chunk: string) => {
-            setConversations(prev => prev.map(c => {
+            // Use persistConversations (not raw setConversations) so the ref
+            // stays in sync — otherwise finishAssistant's patchConversation
+            // would read a stale ref and lose the streamed content.
+            const next = conversationsRef.current.map(c => {
               if (c.id !== convId) return c;
               return {
                 ...c,
@@ -556,10 +608,11 @@ export function useChat(hostApp: OfficeHostType) {
                     : m,
                 ),
               };
-            }));
+            });
+            persistConversations(next);
           };
           const onThinking = (chunk: string) => {
-            setConversations(prev => prev.map(c => {
+            const next = conversationsRef.current.map(c => {
               if (c.id !== convId) return c;
               return {
                 ...c,
@@ -569,7 +622,8 @@ export function useChat(hostApp: OfficeHostType) {
                     : m,
                 ),
               };
-            }));
+            });
+            persistConversations(next);
           };
           const { text, thinking } = await ai.sendMessageStream(
             aiMessages,
@@ -624,7 +678,7 @@ export function useChat(hostApp: OfficeHostType) {
         }));
       }
     }
-  }, [hostApp, ai, persistConversations, patchConversation]);
+  }, [hostApp, ai, persistConversations, patchConversation, flushStorageWrite]);
 
   const deleteConversation = useCallback((id: string) => {
     const updated = conversationsRef.current.filter(c => c.id !== id);
@@ -649,13 +703,13 @@ export function useChat(hostApp: OfficeHostType) {
       dataStr = JSON.stringify(conv, null, 2);
     } else if (format === 'markdown') {
       dataStr = conv.messages
-        .filter(m => m.role !== 'system')
+        .filter(m => m.role !== 'system' && m.role !== 'compaction_summary')
         .map(m => `## ${m.role === 'user' ? 'You' : 'AI'}\n\n${m.content}`)
         .join('\n\n---\n\n');
       ext = 'md' as any;
     } else {
       dataStr = conv.messages
-        .filter(m => m.role !== 'system')
+        .filter(m => m.role !== 'system' && m.role !== 'compaction_summary')
         .map(m => `${m.role.toUpperCase()}: ${m.content}`)
         .join('\n\n');
     }
@@ -683,6 +737,13 @@ export function useChat(hostApp: OfficeHostType) {
     clearAllConversations,
     exportConversation,
     setActiveConversation,
+    // Expose isStreaming + cancelStream from the INTERNAL useAI() instance
+    // so ChatPanel reads the SAME state that sendChatMessage updates.
+    // Without this, ChatPanel would call useAI() separately and get its own
+    // independent isStreaming=false that never changes — making it impossible
+    // for the user to tell when the LLM is responding vs. done.
+    isStreaming: ai.isStreaming,
+    cancelStream: ai.cancelStream,
   };
 }
 

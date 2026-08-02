@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
-  makeStyles, tokens, Popover, PopoverTrigger, PopoverSurface,
-  MenuButton,
-  Input, Tooltip,
+  makeStyles, tokens, Popover, PopoverSurface,
+  Button, Input, Tooltip,
 } from '@fluentui/react-components';
 import { SparkleRegular, SearchRegular } from '@fluentui/react-icons';
 import { useAppState } from '../../store/AppContext';
@@ -12,9 +11,6 @@ import {
 } from '../../services/promptTemplates';
 
 const useStyles = makeStyles({
-  trigger: {
-    minWidth: 'auto',
-  },
   surface: {
     width: '320px',
     maxHeight: '420px',
@@ -71,14 +67,20 @@ interface PromptTemplatesPanelProps {
 /**
  * Quick-Actions / Prompt Templates panel — opens from a sparkle icon in the
  * nav bar. Curated, host-aware prompt library inspired by office-agents'
- * Skills system and OfficeCLI's specialized skill triggers (pitch-deck,
- * financial-model, dashboard, academic-paper).
+ * Skills system and OfficeCLI's specialized skill triggers.
+ *
+ * Implementation note: we use a manual Popover (with `open` + a ref'd Button
+ * as the target) instead of `<PopoverTrigger>` wrapping a `<Tooltip>`.
+ * PopoverTrigger clones its child to attach a ref, but Tooltip is a component
+ * (not a DOM element) and doesn't forward the ref — which silently breaks the
+ * trigger binding and can cause the whole nav bar to fail to render.
  */
 export const PromptTemplatesPanel: React.FC<PromptTemplatesPanelProps> = ({ onPick }) => {
   const classes = useStyles();
   const { host } = useAppState();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const filtered = useMemo(() => {
     const hostTemplates = getTemplatesForHost(host);
@@ -103,18 +105,17 @@ export const PromptTemplatesPanel: React.FC<PromptTemplatesPanelProps> = ({ onPi
     <Popover
       open={open}
       onOpenChange={(_, data) => setOpen(data.open)}
-      positioning="below"
+      positioning={{ target: buttonRef as any, position: 'below', align: 'start' }}
     >
-      <PopoverTrigger>
-        <Tooltip content="Prompt Templates" relationship="label">
-          <MenuButton
-            appearance="subtle"
-            size="small"
-            icon={<SparkleRegular />}
-            className={classes.trigger}
-          />
-        </Tooltip>
-      </PopoverTrigger>
+      <Tooltip content="Prompt Templates" relationship="label">
+        <Button
+          ref={buttonRef}
+          appearance="subtle"
+          size="small"
+          icon={<SparkleRegular />}
+          onClick={() => setOpen(o => !o)}
+        />
+      </Tooltip>
       <PopoverSurface className={classes.surface}>
         <Input
           className={classes.search}

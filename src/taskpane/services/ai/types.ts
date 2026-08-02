@@ -45,6 +45,16 @@ export abstract class BaseAIProvider {
 // Utility for parsing OpenAI-compatible SSE streams.
 // If an AbortSignal is provided and becomes aborted, the reader is cancelled
 // and the generator returns cleanly.
+//
+// Thinking-block handling: DeepSeek-R1 and similar reasoning models stream
+// their chain-of-thought either as:
+//   (a) a separate `delta.reasoning_content` field, OR
+//   (b) inline in `delta.content` wrapped in <think>...</think> tags.
+// Because streaming fragments the tags across chunks (e.g. one chunk is
+// "<think>", the next is "Let me analyze", the next is "</think>"), we
+// track an `inThinkingBlock` state to route ALL content between the tags
+// to the `thinking` channel — not just chunks that happen to start with
+// `<think>`.
 export async function* parseOpenAISSEStream(
   response: Response,
   signal?: AbortSignal,
@@ -54,6 +64,7 @@ export async function* parseOpenAISSEStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let inThinkingBlock = false;
 
   const onAbort = () => { reader.cancel().catch(() => {}); };
   if (signal) {
@@ -83,19 +94,35 @@ export async function* parseOpenAISSEStream(
         try {
           const parsed = JSON.parse(data);
           const delta = parsed.choices?.[0]?.delta;
-          const content = delta?.content;
-          // DeepSeek-R1 and similar reasoning models expose thinking either as
-          // a separate `reasoning_content` field OR inline wrapped in <think>.
-          // We capture both so the UI can render a collapsible thinking block.
-          const thinking =
-            delta?.reasoning_content ??
-            (typeof content === 'string' && content.startsWith('<think>')
-              ? content
-              : undefined);
-          if (content) {
-            yield { content, done: false, thinking };
-          } else if (thinking) {
-            yield { content: '', done: false, thinking };
+          const content: string | undefined = delta?.content;
+
+          // Case (a): explicit reasoning_content field (DeepSeek-R1's API).
+          if (delta?.reasoning_content) {
+            yield { content: '', done: false, thinking: delta.reasoning_content };
+            continue;
+          }
+
+          // Case (b): inline <think>...</think> blocks in the content stream.
+          if (typeof content === 'string' && content.length > 0) {
+            // Split on <think> and </think> tags, preserving them.
+            // This handles cases where the tag and content arrive in the
+            // same chunk OR split across chunks.
+            const parts = content.split(/(<\/?think>)/);
+            for (const part of parts) {
+              if (part === '<think>') {
+                inThinkingBlock = true;
+                yield { content: '', done: false, thinking: '<think>' };
+              } else if (part === '</think>') {
+                inThinkingBlock = false;
+                yield { content: '', done: false, thinking: '</think>' };
+              } else if (part.length > 0) {
+                if (inThinkingBlock) {
+                  yield { content: '', done: false, thinking: part };
+                } else {
+                  yield { content: part, done: false };
+                }
+              }
+            }
           }
         } catch (e) {
           console.error("Failed to parse SSE chunk", e);

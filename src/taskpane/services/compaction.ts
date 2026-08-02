@@ -74,7 +74,14 @@ export function shouldCompact(messages: ChatMessage[]): number | null {
 export function buildCompactionPrompt(messagesToSummarize: ChatMessage[]): string {
   const transcript = messagesToSummarize
     .filter(m => m.role !== 'system')
-    .map(m => `[${m.role.toUpperCase()}]\n${m.content}`)
+    .map(m => {
+      // Use a cleaner label for compaction markers so the summarizer LLM
+      // understands it's a previous summary, not a new user/assistant turn.
+      if (m.role === 'compaction_summary') {
+        return `[PREVIOUS SUMMARY]\n${m.content}`;
+      }
+      return `[${m.role.toUpperCase()}]\n${m.content}`;
+    })
     .join('\n\n---\n\n');
 
   return `You are a conversation summarizer. Below is a transcript of an earlier portion of a chat between a user and an AI Office Copilot assistant. Summarize it into a concise context block that preserves:

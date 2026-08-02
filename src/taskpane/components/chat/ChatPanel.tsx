@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { ChatRegular } from '@fluentui/react-icons';
 import { UseChatReturn } from '../../hooks/useChat';
-import { useAI } from '../../hooks/useAI';
 import { useAppState } from '../../store/AppContext';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
@@ -44,8 +43,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
   const {
     messages, sendChatMessage,
     createConversation, includeContext,
+    isStreaming, cancelStream,
   } = chat;
-  const { isStreaming, cancelStream } = useAI();
+  // useAI's error state is not exposed through useChat — but ChatInput can
+  // show a generic error indicator if the last message starts with ⚠️.
+  const lastMessage = messages[messages.length - 1];
+  const hasError = lastMessage?.role === 'assistant' && lastMessage.content.startsWith('⚠️');
   const messageListRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages
@@ -90,6 +93,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
           disabled={isStreaming}
           onCancel={cancelStream}
           isStreaming={isStreaming}
+          error={hasError && !isStreaming ? 'last message had an error' : undefined}
         />
       </div>
     </div>

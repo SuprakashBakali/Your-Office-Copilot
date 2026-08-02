@@ -25,11 +25,21 @@ function getItem<T>(key: string, fallback: T): T {
   }
 }
 
-function setItem<T>(key: string, value: T): void {
+function setItem<T>(key: string, value: T): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch (e) {
     console.warn("[Storage] Failed to save:", key, e);
+    // Surface the error so the UI can notify the user — otherwise their
+    // data appears saved (React state is updated) but isn't actually
+    // persisted, and they only find out on refresh.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storage-error', {
+        detail: { key, error: (e as Error).message },
+      }));
+    }
+    return false;
   }
 }
 

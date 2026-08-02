@@ -53,6 +53,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_OFFICE_CONTEXT', payload: host });
   }, []);
 
+  // Listen for localStorage quota errors dispatched by storage.ts
+  // so the user gets a visible warning instead of silently losing data.
+  useEffect(() => {
+    const onStorageError = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      dispatch({
+        type: 'SET_NOTIFICATION',
+        payload: {
+          type: 'warning',
+          message: 'Storage full — older conversations may not be saved. Try clearing old chats.',
+        },
+      });
+      console.warn('[Storage Error]', detail);
+    };
+    window.addEventListener('storage-error', onStorageError as EventListener);
+    return () => window.removeEventListener('storage-error', onStorageError as EventListener);
+  }, []);
+
   // Auto-clear notifications after 4 seconds
   useEffect(() => {
     if (state.notification) {

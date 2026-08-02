@@ -135,11 +135,11 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
           )}
 
           <Menu>
-            <MenuTrigger disableButtonEnhancement>
-              <Tooltip content="Chat History" relationship="label">
+            <Tooltip content="Chat History" relationship="label">
+              <MenuTrigger disableButtonEnhancement>
                 <Button icon={<HistoryRegular />} appearance="subtle" size="small" />
-              </Tooltip>
-            </MenuTrigger>
+              </MenuTrigger>
+            </Tooltip>
             <MenuPopover>
               <Input
                 className={classes.historySearch}

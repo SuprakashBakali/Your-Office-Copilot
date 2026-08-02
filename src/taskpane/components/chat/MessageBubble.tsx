@@ -94,8 +94,12 @@ interface MessageBubbleProps {
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message, onRegenerate, onApplyToExcel }) => {
   const classes = useStyles();
   const isUser = message.role === 'user';
-  const isError = message.content.startsWith('⚠️');
-  const isEmpty = !message.content && !isUser;
+  // Guard against null/undefined content (e.g. from corrupted localStorage
+  // after a schema migration) — .startsWith() would throw otherwise and
+  // crash the entire message list.
+  const content = message.content || '';
+  const isError = content.startsWith('⚠️');
+  const isEmpty = !content && !isUser;
 
   return (
     <div className={`${classes.container} ${isUser ? classes.userContainer : classes.assistantContainer}`}>
@@ -123,14 +127,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
               <span style={{ color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 }}>Thinking...</span>
             </div>
           ) : isUser ? (
-            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{message.content}</div>
+            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</div>
           ) : (
-            <MarkdownRenderer content={message.content} />
+            <MarkdownRenderer content={content} />
           )}
         </div>
-        {!isUser && message.content && (
+        {!isUser && content && (
           <div className={`${classes.actions} msg-actions`}>
-            <CopyButton text={message.content} />
+            <CopyButton text={content} />
             {onRegenerate && (
               <Tooltip content="Regenerate response" relationship="label">
                 <Button
@@ -141,13 +145,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                 />
               </Tooltip>
             )}
-            {onApplyToExcel && message.content.includes('```') && (
+            {onApplyToExcel && content.includes('```') && (
               <Tooltip content="Apply to Excel" relationship="label">
                 <Button
                   appearance="transparent"
                   size="small"
                   icon={<TableSimpleRegular />}
-                  onClick={() => onApplyToExcel(message.content)}
+                  onClick={() => onApplyToExcel(content)}
                 />
               </Tooltip>
             )}
