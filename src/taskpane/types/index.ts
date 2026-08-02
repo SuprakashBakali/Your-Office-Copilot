@@ -88,7 +88,7 @@ export interface ChatOptions {
 
 // ---- Office Types ----
 
-export type OfficeHostType = "Excel" | "Word" | "PowerPoint" | "Unknown";
+export type OfficeHostType = "Excel" | "Word" | "PowerPoint" | "Unknown" | "All";
 
 export interface OfficeContextInfo {
   host: OfficeHostType;
@@ -233,3 +233,36 @@ export interface AppNotification {
 // ---- Export Types ----
 
 export type ExportFormat = "markdown" | "json" | "text" | "html";
+
+// ---- Prompt Types ----
+
+export type PromptCategory =
+  | "analysis"
+  | "cleaning"
+  | "formula"
+  | "formatting"
+  | "automation"
+  | "general"
+  | "audit"
+  | "presentation"
+  | "reporting"
+  | "ca"
+  | "compliance-bd"
+  | "writing"
+  | "translate"
+  | "chart"
+  | "finance"
+  | "code"
+  | "accounting"
+  | "all";
+
+export interface PromptTemplate {
+  id: string;
+  title: string;
+  description: string;
+  prompt: string;
+  category: PromptCategory;
+  hostApp: OfficeHostType;
+  icon: string;
+}
+
