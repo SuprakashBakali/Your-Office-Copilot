@@ -283,3 +283,7 @@ This project is open-source and released under the [MIT License](LICENSE). Free 
 <p align="center">
   Built with ❤️ using React 18, TypeScript, Fluent UI v9, and Office.js
 </p>
+
+<p align="center">
+  Copyright (c) 2026 Suprakash Bakali
+</p>
