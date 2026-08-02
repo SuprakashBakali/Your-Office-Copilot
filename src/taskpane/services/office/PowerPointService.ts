@@ -71,9 +71,36 @@ export class PowerPointService {
 
   static async addShape(shapeType: string): Promise<void> {
     if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      // Map common string names to PowerPoint.GeometricShapeType enum values.
+      // Passing a raw string like "Rectangle" to addGeometricShape throws.
+      // PowerPoint.addGeometricShape accepts string literal values
+      // (e.g. "Rectangle", "Ellipse") — not enum members.
+      const shapeMap: Record<string, string> = {
+        'rectangle': 'Rectangle',
+        'roundedrectangle': 'RoundRectangle',
+        'roundrectangle': 'RoundRectangle',
+        'oval': 'Ellipse',
+        'ellipse': 'Ellipse',
+        'line': 'Line',
+        'diamond': 'Diamond',
+        'triangle': 'Triangle',
+        'righttriangle': 'RightTriangle',
+        'pentagon': 'Pentagon',
+        'hexagon': 'Hexagon',
+        'star': 'Star5',
+        'arrow': 'RightArrow',
+        'rightarrow': 'RightArrow',
+        'leftarrow': 'LeftArrow',
+        'uparrow': 'UpArrow',
+        'downarrow': 'DownArrow',
+      };
+      const pptShape = shapeMap[shapeType.toLowerCase()];
+      if (!pptShape) {
+        throw new Error(`Unknown shape type: ${shapeType}. Supported: ${Object.keys(shapeMap).join(', ')}`);
+      }
       return PowerPoint.run(async (context) => {
         const slide = context.presentation.slides.getItemAt(0);
-        slide.shapes.addGeometricShape(shapeType as any);
+        slide.shapes.addGeometricShape(pptShape as any);
         await context.sync();
       });
     } else {
@@ -95,8 +122,18 @@ export class PowerPointService {
     }
   }
 
-  static async setSlideNotes(_notes: string): Promise<void> {
-    throw new Error("Setting slide notes requires newer PowerPoint API, not fully implemented in Office JS yet.");
+  static async setSlideNotes(notes: string): Promise<void> {
+    // PowerPointApi 1.4+ supports reading/writing slide notes via
+    // slide.notesSlide.textRange.text property.
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(0);
+        const notesSlide = (slide as any).notesSlide;
+        notesSlide.textRange.text = notes;
+        await context.sync();
+      });
+    }
+    throw new Error("setSlideNotes requires PowerPointApi 1.4+.");
   }
 
   static async getContextForAI(): Promise<string> {

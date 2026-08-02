@@ -17,7 +17,8 @@ export function useAI() {
     const activeCustomModel = (settings.customModels || []).find(
       m => m.id === settings.activeCustomModelId,
     );
-    const apiKey = activeCustomModel?.apiKey || settings.apiKeys[settings.activeProvider] || '';
+    const providerType = activeCustomModel?.provider ?? settings.activeProvider;
+    const apiKey = activeCustomModel?.apiKey || settings.apiKeys[providerType] || '';
     const modelId = activeCustomModel?.modelId ?? settings.activeModel;
 
     const provider = activeCustomModel?.baseUrl

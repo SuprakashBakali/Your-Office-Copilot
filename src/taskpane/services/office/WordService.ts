@@ -75,16 +75,19 @@ export class WordService {
   }
 
   static async insertTable(values: string[][], location: 'before'|'after'|'end'): Promise<void> {
+    if (!values?.length || !values[0]?.length) {
+      throw new Error('Table data must be a non-empty 2D array');
+    }
     return Word.run(async (context) => {
       const doc = context.document;
       let target: any = doc.body;
       let wordLoc = Word.InsertLocation.end;
-      
+
       if (location !== 'end') {
         target = doc.getSelection();
         wordLoc = location === 'before' ? Word.InsertLocation.before : Word.InsertLocation.after;
       }
-      
+
       target.insertTable(values.length, values[0].length, wordLoc, values);
       await context.sync();
     });

@@ -70,14 +70,17 @@ export function getOfficeContext(): OfficeContextInfo {
 
 export function getOfficeVersionName(context: OfficeContextInfo): string {
   if (!context.isReady) return 'Unknown Version';
-  
+
   const platform = context.platform;
-  
-  if (platform === String(Office.PlatformType.OfficeOnline)) {
+
+  // Compare against the enum directly — String() on a numeric enum is
+  // fragile and version-dependent. Office.context.platform returns the
+  // enum value, but it's typed as `any` so we cast for the comparison.
+  if (platform as any === Office.PlatformType.OfficeOnline) {
     return 'Office Online';
   }
-  
-  if (platform === String(Office.PlatformType.Mac) || platform === String(Office.PlatformType.PC)) {
+
+  if (platform as any === Office.PlatformType.Mac || platform as any === Office.PlatformType.PC) {
     if (context.host === 'Excel') {
       if (context.supportedApis.excelApi1_14) return 'Microsoft 365';
       if (context.supportedApis.excelApi1_13) return 'Office 2021';
@@ -85,6 +88,6 @@ export function getOfficeVersionName(context: OfficeContextInfo): string {
       if (context.supportedApis.excelApi1_3) return 'Office 2016';
     }
   }
-  
+
   return `Office (${platform})`;
 }

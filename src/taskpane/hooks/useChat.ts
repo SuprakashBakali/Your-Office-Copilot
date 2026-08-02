@@ -19,19 +19,19 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
       const cmd = JSON.parse(match[1].trim());
       switch (cmd.action) {
         case 'write_cell':
-          await ExcelService.writeToRange(cmd.cell, [[cmd.value]], cmd.sheet);
+          await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);
           results.executed++;
           break;
         case 'write_formula':
-          await ExcelService.insertFormula(cmd.cell, cmd.formula, cmd.sheet);
+          await ExcelService.insertFormula(cmd.cell, cmd.formula);
           results.executed++;
           break;
         case 'write_range':
-          await ExcelService.writeToRange(cmd.range, cmd.values, cmd.sheet);
+          await ExcelService.writeToRange(cmd.range, cmd.values);
           results.executed++;
           break;
         case 'create_chart':
-          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title, cmd.sheet);
+          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title);
           results.executed++;
           break;
         case 'delete_chart':
@@ -43,19 +43,15 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           results.executed++;
           break;
         case 'clear_range':
-          await ExcelService.clearRange(cmd.range, cmd.sheet);
+          await ExcelService.clearRange(cmd.range);
           results.executed++;
           break;
         case 'format_range':
-          await ExcelService.formatRange(cmd.range, { ...cmd.options, sheet: cmd.sheet });
+          await ExcelService.formatRange(cmd.range, cmd.options);
           results.executed++;
           break;
         case 'add_sheet':
           await ExcelService.addSheet(cmd.name);
-          results.executed++;
-          break;
-        case 'activate_sheet':
-          await ExcelService.activateSheet(cmd.name);
           results.executed++;
           break;
         case 'delete_sheet':
@@ -175,21 +171,9 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           break;
         }
         case 'get_range_csv': {
-          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows, cmd.sheet);
+          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows);
           results.executed++;
           results.errors.push(`[CSV data]:\n${csv}`);
-          break;
-        }
-        case 'get_sheet_data': {
-          const { ExcelService: ES } = await import('../services/office/ExcelService');
-          const sheetData = await ES.getSheetData(cmd.sheet);
-          const { formatted: sheetFormatted, isTruncated: sheetTrunc, rowsShown: sheetRows, totalRows: sheetTotal } =
-            (ES as any).formatCellValuesForAI ? (ES as any).formatCellValuesForAI(sheetData.values, 1000)
-            : { formatted: JSON.stringify(sheetData.values?.slice(0, 100)), isTruncated: false, rowsShown: 0, totalRows: 0 };
-          results.executed++;
-          let dataStr = `Sheet "${cmd.sheet}" (${sheetData.rowCount} rows × ${sheetData.columnCount} cols, range: ${sheetData.address}):\n${sheetFormatted}`;
-          if (sheetTrunc) dataStr += `\n(Showing first ${sheetRows} of ${sheetTotal} rows)`;
-          results.errors.push(`[sheet data]: ${dataStr}`);
           break;
         }
         case 'freeze_panes':
@@ -559,17 +543,19 @@ export function useChat(hostApp: OfficeHostType) {
     let historyMessages: ChatMessage[] = conv?.messages ?? [];
 
     // Drop the empty assistant placeholder we just added — it should not be
-    // sent to the LLM as context.
-    historyMessages = historyMessages.filter(m => m.id !== assistantMsgId);
+    // sent to the LLM as context. BUT: don't patch state with this filtered
+    // array, because that would remove the placeholder from the UI. The
+    // placeholder must stay in state so finishAssistant can update it later.
+    const llmHistory = historyMessages.filter(m => m.id !== assistantMsgId);
 
     // If compaction is needed, run it (best-effort; if it fails we proceed
     // with the full history and let the provider's own token limit kick in).
     try {
       const { shouldCompact, buildCompactionPrompt, insertCompactionSummary, sliceContextForLLM } =
         await import('../services/compaction');
-      const cutIdx = shouldCompact(historyMessages);
+      const cutIdx = shouldCompact(llmHistory);
       if (cutIdx !== null) {
-        const summarizable = historyMessages.slice(0, cutIdx);
+        const summarizable = llmHistory.slice(0, cutIdx);
         const summaryPrompt = buildCompactionPrompt(summarizable);
         const summaryResp = await ai.sendMessage(
           [
@@ -578,9 +564,23 @@ export function useChat(hostApp: OfficeHostType) {
           ],
           { maxTokens: 600 },
         );
-        historyMessages = insertCompactionSummary(historyMessages, cutIdx, summaryResp);
-        // Persist the compaction marker so we don't re-summarize on every turn.
-        patchConversation(convId!, c => ({ ...c, messages: historyMessages }));
+        const compactedHistory = insertCompactionSummary(llmHistory, cutIdx, summaryResp);
+        // Persist the compaction marker INTO the real conversation state —
+        // but KEEP the assistant placeholder. Insert the marker before the
+        // placeholder's position in the real messages array.
+        patchConversation(convId!, c => {
+          const realMessages = c.messages;
+          const placeholderIdx = realMessages.findIndex(m => m.id === assistantMsgId);
+          // Build the new messages array: everything from compactedHistory
+          // (which has the compaction marker) + the assistant placeholder.
+          const beforePlaceholder = compactedHistory;
+          const placeholder = placeholderIdx >= 0 ? realMessages[placeholderIdx] : assistantMessage;
+          return { ...c, messages: [...beforePlaceholder, placeholder] };
+        });
+        // Use the compacted history (without placeholder) for the LLM request.
+        historyMessages = compactedHistory;
+      } else {
+        historyMessages = llmHistory;
       }
       // Slice to LLM-visible context (everything from last compaction onward).
       const llmVisible = sliceContextForLLM(historyMessages);
@@ -677,7 +677,7 @@ export function useChat(hostApp: OfficeHostType) {
       console.warn('Compaction skipped:', err);
       const aiMessages: ChatMessage[] = [
         { id: 'system', role: 'system', content: systemPrompt, timestamp: 0 },
-        ...historyMessages,
+        ...llmHistory,
       ];
       try {
         const full = activeSettings.streamResponses
