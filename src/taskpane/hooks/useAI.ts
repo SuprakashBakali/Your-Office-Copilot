@@ -122,8 +122,9 @@ export function useAI() {
         const msg = (err as Error).message;
         if (msg !== 'Stream cancelled' && !(err as Error).name?.includes('Abort')) {
           setError(msg);
+          throw err;
         }
-        return { text: '', thinking: '' };
+        return { text: fullText, thinking: fullThinking };
       }
     },
     [resolveProvider, buildRequestOptions],

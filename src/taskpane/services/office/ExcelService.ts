@@ -572,14 +572,69 @@ export class ExcelService {
   }
 
 
-  static async getContextForAI(_maxCells: number = 1000): Promise<string> {
+  /**
+   * Format 2D cell values cleanly for AI context, trimming trailing empty rows
+   * and capping to maxCells to avoid multi-megabyte payloads when selecting entire columns.
+   */
+  private static formatCellValuesForAI(
+    values: any[][],
+    maxCells: number,
+  ): { formatted: string; isTruncated: boolean; rowsShown: number; totalRows: number } {
+    if (!values || !Array.isArray(values) || values.length === 0) {
+      return { formatted: '[]', isTruncated: false, rowsShown: 0, totalRows: 0 };
+    }
+
+    // 1. Trim trailing completely empty rows (common when selecting columns like D:D)
+    let lastNonEmptyRow = values.length - 1;
+    while (lastNonEmptyRow >= 0) {
+      const row = values[lastNonEmptyRow];
+      const hasData =
+        row &&
+        Array.isArray(row) &&
+        row.some((cell) => cell !== null && cell !== undefined && String(cell).trim() !== '');
+      if (hasData) break;
+      lastNonEmptyRow--;
+    }
+
+    const trimmedRows = lastNonEmptyRow >= 0 ? values.slice(0, lastNonEmptyRow + 1) : [];
+    if (trimmedRows.length === 0) {
+      return { formatted: '[]', isTruncated: false, rowsShown: 0, totalRows: values.length };
+    }
+
+    // 2. Cap to maxCells to prevent token overflow / HTTP 413 Payload Too Large
+    const colCount = Math.max(1, trimmedRows[0]?.length || 1);
+    const maxRowsAllowed = Math.max(10, Math.floor(maxCells / colCount));
+    const rowsShown = Math.min(trimmedRows.length, maxRowsAllowed);
+    const isTruncated = trimmedRows.length > maxRowsAllowed;
+
+    const sliced = trimmedRows.slice(0, rowsShown);
+    return {
+      formatted: JSON.stringify(sliced),
+      isTruncated,
+      rowsShown,
+      totalRows: trimmedRows.length,
+    };
+  }
+
+  static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
       const data = await this.getSelectedRange();
+      let target = data;
+      let label = 'Selected Range';
       if (data.rowCount * data.columnCount === 1 && !data.values[0][0]) {
-        const used = await this.getUsedRange();
-        return `Active Sheet: ${used.sheetName}\nUsed Range: ${used.address}\nData:\n${JSON.stringify(used.values.slice(0, Math.min(used.rowCount, 50)))}`;
+        target = await this.getUsedRange();
+        label = 'Used Range';
       }
-      return `Active Sheet: ${data.sheetName}\nSelected Range: ${data.address}\nData:\n${JSON.stringify(data.values)}`;
+
+      const { formatted, isTruncated, rowsShown, totalRows } = this.formatCellValuesForAI(
+        target.values,
+        maxCells,
+      );
+      let res = `Active Sheet: ${target.sheetName}\n${label}: ${target.address}\nData:\n${formatted}`;
+      if (isTruncated) {
+        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows in range to conserve tokens)`;
+      }
+      return res;
     } catch (e) {
       return `Unable to read Excel context: ${(e as Error).message}`;
     }

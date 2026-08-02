@@ -141,7 +141,7 @@ module.exports = async (env, options) => {
         if (!devServer) throw new Error("webpack-dev-server is not defined");
 
         const express = require("express");
-        devServer.app.post("/api/proxy", express.json(), async (req, res) => {
+        devServer.app.post("/api/proxy", express.json({ limit: "20mb" }), async (req, res) => {
           try {
             const { targetUrl, headers, body } = req.body || {};
             if (!targetUrl || typeof targetUrl !== "string") {

@@ -131,3 +131,12 @@ export default async function handler(req, res) {
     res.status(502).json({ error: 'Proxy Request Failed', details: error.message });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
