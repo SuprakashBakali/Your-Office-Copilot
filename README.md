@@ -252,16 +252,6 @@ npm run build
 
 ---
 
-## 🗺️ Roadmap & Future Vision
-
-- [x] **Phase 1 (MVP):** 7 AI Providers, Fluent UI v9 Taskpane, Excel/Word/PowerPoint automation engines, streaming chat.
-- [x] **Phase 2 (Dynamic Sandboxing):** SES-inspired `eval_js` command execution for on-the-fly custom Office scripts.
-- [ ] **Phase 3 (Custom Excel Functions):** Direct worksheet cell formulas: `=AI.ANALYZE(A1:D50, "Summarize trends")`.
-- [ ] **Phase 4 (Autonomous Multi-Step Agents):** Agentic workflows that execute multi-step goals (e.g., *"Clean this dataset, create a pivot table, and plot a revenue chart"*).
-- [ ] **Phase 5 (Team Prompt Libraries):** Share custom prompt templates across corporate workgroups.
-
----
-
 ## 🤝 Contributing
 
 We love contributions from the open-source community! Whether it's adding new prompt templates, optimizing Excel automation commands, or supporting new AI models, here's how to contribute:
