@@ -48,7 +48,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
   // useAI's error state is not exposed through useChat — but ChatInput can
   // show a generic error indicator if the last message starts with ⚠️.
   const lastMessage = messages[messages.length - 1];
-  const hasError = lastMessage?.role === 'assistant' && lastMessage.content.startsWith('⚠️');
+  const hasError = lastMessage?.role === 'assistant' && (lastMessage.content || '').startsWith('⚠️');
   const messageListRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll on new messages

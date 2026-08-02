@@ -81,7 +81,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
     const q = historyQuery.toLowerCase();
     return chat.conversations.filter(c =>
       c.title.toLowerCase().includes(q) ||
-      c.messages.some(m => m.content.toLowerCase().includes(q)),
+      c.messages.some(m => (m.content || '').toLowerCase().includes(q)),
     );
   }, [chat.conversations, historyQuery]);
 
