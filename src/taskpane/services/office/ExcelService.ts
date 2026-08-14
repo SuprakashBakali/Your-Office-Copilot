@@ -638,6 +638,20 @@ export class ExcelService {
 
   static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
+      // 1. Get workbook overview — ALL sheets with their dimensions
+      const wbInfo = await this.getWorkbookInfo();
+      let res = `Workbook: ${wbInfo.name}\nActive Sheet: ${wbInfo.activeSheet}\n\nAll Sheets:`;
+      for (const s of wbInfo.sheets) {
+        const dim = s.rowCount && s.columnCount
+          ? `${s.rowCount} rows × ${s.columnCount} cols (range: ${s.usedRangeAddress})`
+          : 'empty';
+        res += `\n  - ${s.name}${s.isVisible ? '' : ' (hidden)'}: ${dim}`;
+      }
+      if (wbInfo.namedRanges && wbInfo.namedRanges.length > 0) {
+        res += `\n\nNamed Ranges: ${wbInfo.namedRanges.join(', ')}`;
+      }
+
+      // 2. Get the active sheet's data (selection or used range)
       const data = await this.getSelectedRange();
       let target = data;
       let label = 'Selected Range';
@@ -650,9 +664,9 @@ export class ExcelService {
         target.values,
         maxCells,
       );
-      let res = `Active Sheet: ${target.sheetName}\n${label}: ${target.address}\nData:\n${formatted}`;
+      res += `\n\n${label} on "${target.sheetName}": ${target.address}\nData:\n${formatted}`;
       if (isTruncated) {
-        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows in range to conserve tokens)`;
+        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows. Use get_sheet_data to read other sheets.)`;
       }
       return res;
     } catch (e) {
