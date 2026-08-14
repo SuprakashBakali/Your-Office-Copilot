@@ -210,135 +210,13 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
   return results;
 }
 
-// ---- Word Command Execution ----
-export async function executeWordCommands(text: string): Promise<ExcelCmdResult> {
-  const results: ExcelCmdResult = { executed: 0, errors: [] };
-  const cmdRegex = /<WORD_CMD>([/\s\S]*?)<\/WORD_CMD>/g;
-  let match;
-  while ((match = cmdRegex.exec(text)) !== null) {
-    try {
-      const cmd = JSON.parse(match[1].trim());
-      const { WordService } = await import('../services/office/WordService');
-      switch (cmd.action) {
-        case 'insert_table':
-          await WordService.insertTable(cmd.values, cmd.location || 'end');
-          results.executed++;
-          break;
-        case 'insert_paragraph':
-          await WordService.insertParagraph(cmd.text, cmd.location || 'after');
-          results.executed++;
-          break;
-        case 'format_text':
-          await WordService.formatText(cmd.options);
-          results.executed++;
-          break;
-        case 'apply_style':
-          await WordService.applyStyle(cmd.style);
-          results.executed++;
-          break;
-        case 'clear_formatting':
-          await WordService.clearFormatting();
-          results.executed++;
-          break;
-        case 'search_replace':
-          await WordService.searchReplace(cmd.find_text, cmd.replace_text);
-          results.executed++;
-          break;
-        case 'eval_js': {
-          const jsResult = await WordService.evalOfficeJs(cmd.code);
-          results.executed++;
-          if (jsResult !== null && jsResult !== undefined) {
-            results.errors.push(`[Word eval_js result]: ${JSON.stringify(jsResult)}`);
-          }
-          break;
-        }
-        case 'get_structure': {
-          const struct = await WordService.getDocumentStructure();
-          results.executed++;
-          results.errors.push(`[Word structure]: ${JSON.stringify(struct)}`);
-          break;
-        }
-        case 'highlight_search': {
-          const count = await WordService.searchAndHighlight(cmd.find_text, cmd.color || 'Yellow');
-          results.executed++;
-          results.errors.push(`[Highlighted ${count} matches]`);
-          break;
-        }
-        default:
-          results.errors.push(`Unknown Word action: ${cmd.action}`);
-      }
-    } catch (e) {
-      results.errors.push((e as Error).message);
-    }
-  }
-  return results;
-}
-
-// ---- PPT Command Execution ----
-export async function executePPTCommands(text: string): Promise<ExcelCmdResult> {
-  const results: ExcelCmdResult = { executed: 0, errors: [] };
-  const cmdRegex = /<PPT_CMD>([/\s\S]*?)<\/PPT_CMD>/g;
-  let match;
-  while ((match = cmdRegex.exec(text)) !== null) {
-    try {
-      const cmd = JSON.parse(match[1].trim());
-      const { PowerPointService } = await import('../services/office/PowerPointService');
-      switch (cmd.action) {
-        case 'add_slide':
-          await PowerPointService.addSlide();
-          results.executed++;
-          break;
-        case 'add_textbox':
-          await PowerPointService.addTextbox(cmd.text, cmd.slide_index);
-          results.executed++;
-          break;
-        case 'add_shape':
-          await PowerPointService.addShape(cmd.shape_type);
-          results.executed++;
-          break;
-        case 'format_shape':
-          await PowerPointService.formatShape(cmd.shape_index, cmd.fill_color, cmd.font_color);
-          results.executed++;
-          break;
-        case 'set_slide_notes':
-          await PowerPointService.setSlideNotes(cmd.notes);
-          results.executed++;
-          break;
-        case 'eval_js': {
-          const jsResult = await PowerPointService.evalOfficeJs(cmd.code);
-          results.executed++;
-          if (jsResult !== null && jsResult !== undefined) {
-            results.errors.push(`[PPT eval_js result]: ${JSON.stringify(jsResult)}`);
-          }
-          break;
-        }
-        case 'get_shapes': {
-          const shapes = await PowerPointService.getAllSlideShapes(cmd.slide_index || 0);
-          results.executed++;
-          results.errors.push(`[Slide shapes]: ${JSON.stringify(shapes)}`);
-          break;
-        }
-        case 'delete_slide':
-          await PowerPointService.deleteSlide(cmd.slide_index || 0);
-          results.executed++;
-          break;
-        default:
-          results.errors.push(`Unknown PPT action: ${cmd.action}`);
-      }
-    } catch (e) {
-      results.errors.push((e as Error).message);
-    }
-  }
-  return results;
-}
-
-/** Strip <*_CMD>...</*_CMD> blocks from displayed text.
+/** Strip <EXCEL_CMD>...</EXCEL_CMD> blocks from displayed text.
  *  Also strips unclosed command blocks (e.g. when the model is cut off
  *  mid-generation) so the raw <EXCEL_CMD> tag doesn't leak into the UI. */
 export function cleanResponseText(text: string): string {
   return text
-    .replace(/<(EXCEL|WORD|PPT)_CMD>([/\s\S]*?)<\/\1_CMD>/g, '')   // closed blocks
-    .replace(/<(EXCEL|WORD|PPT)_CMD>[/\s\S]*$/g, '')               // unclosed blocks (to end)
+    .replace(/<EXCEL_CMD>([/\s\S]*?)<\/EXCEL_CMD>/g, '')   // closed blocks
+    .replace(/<EXCEL_CMD>[/\s\S]*$/g, '')               // unclosed blocks (to end)
     .trim();
 }
 
@@ -356,8 +234,6 @@ function cleanThinkingText(thinking: string): string {
 async function executeHostCommands(hostApp: OfficeHostType, text: string): Promise<{ executed: number; errors: string[] } | null> {
   try {
     if (hostApp === 'Excel') return await executeExcelCommands(text);
-    else if (hostApp === 'Word') return await executeWordCommands(text);
-    else if (hostApp === 'PowerPoint') return await executePPTCommands(text);
   } catch (e) {
     console.warn('Host command execution failed:', e);
   }
@@ -369,14 +245,6 @@ async function fetchHostContext(hostApp: OfficeHostType): Promise<string> {
   if (hostApp === 'Excel') {
     const { ExcelService } = await import('../services/office/ExcelService');
     return await ExcelService.getContextForAI();
-  }
-  if (hostApp === 'Word') {
-    const { WordService } = await import('../services/office/WordService');
-    return await WordService.getContextForAI();
-  }
-  if (hostApp === 'PowerPoint') {
-    const { PowerPointService } = await import('../services/office/PowerPointService');
-    return await PowerPointService.getContextForAI();
   }
   return '';
 }

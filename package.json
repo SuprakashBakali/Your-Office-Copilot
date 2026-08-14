@@ -13,15 +13,11 @@
     "build": "webpack --mode production",
     "start": "webpack serve --mode development",
     "start:excel": "npm run dev",
-    "start:word": "npm run dev",
-    "start:powerpoint": "npm run dev",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\" \"*.{js,json}\"",
-    "validate:excel": "npx office-addin-manifest validate manifests/excel.xml",
-    "validate:word": "npx office-addin-manifest validate manifests/word.xml",
-    "validate:powerpoint": "npx office-addin-manifest validate manifests/powerpoint.xml"
+    "validate:excel": "npx office-addin-manifest validate manifests/excel.xml"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.54.0",

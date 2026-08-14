@@ -8,10 +8,6 @@ export function detectOfficeHost(): OfficeHostType {
   switch (host) {
     case Office.HostType.Excel:
       return 'Excel';
-    case Office.HostType.Word:
-      return 'Word';
-    case Office.HostType.PowerPoint:
-      return 'PowerPoint';
     default:
       return 'Unknown';
   }
@@ -40,17 +36,7 @@ export function detectSupportedApis(): SupportedApiInfo {
     excelApi1_12: check('ExcelApi', '1.12'),
     excelApi1_13: check('ExcelApi', '1.13'),
     excelApi1_14: check('ExcelApi', '1.14'),
-    
-    wordApi1_1: check('WordApi', '1.1'),
-    wordApi1_2: check('WordApi', '1.2'),
-    wordApi1_3: check('WordApi', '1.3'),
-    wordApi1_4: check('WordApi', '1.4'),
-    
-    powerPointApi1_1: check('PowerPointApi', '1.1'),
-    powerPointApi1_2: check('PowerPointApi', '1.2'),
-    powerPointApi1_3: check('PowerPointApi', '1.3'),
-    powerPointApi1_4: check('PowerPointApi', '1.4'),
-    powerPointApi1_5: check('PowerPointApi', '1.5'),
+    excelApi1_14: check('ExcelApi', '1.14'),
   };
 }
 

@@ -88,7 +88,7 @@ export interface ChatOptions {
 
 // ---- Office Types ----
 
-export type OfficeHostType = "Excel" | "Word" | "PowerPoint" | "Unknown" | "All";
+export type OfficeHostType = "Excel" | "Unknown" | "All";
 
 export interface OfficeContextInfo {
   host: OfficeHostType;
@@ -115,17 +115,6 @@ export interface SupportedApiInfo {
   excelApi1_12: boolean;
   excelApi1_13: boolean;
   excelApi1_14: boolean;
-  // Word API versions
-  wordApi1_1: boolean;
-  wordApi1_2: boolean;
-  wordApi1_3: boolean;
-  wordApi1_4: boolean;
-  // PowerPoint API versions
-  powerPointApi1_1: boolean;
-  powerPointApi1_2: boolean;
-  powerPointApi1_3: boolean;
-  powerPointApi1_4: boolean;
-  powerPointApi1_5: boolean;
 }
 
 /** Data extracted from Excel selection or range */
@@ -139,24 +128,6 @@ export interface CellData {
   sheetName: string;
 }
 
-/** Data extracted from Word document */
-export interface DocumentData {
-  selectedText: string;
-  fullText?: string;
-  paragraphCount?: number;
-  wordCount?: number;
-  title?: string;
-}
-
-/** Data extracted from PowerPoint slides */
-export interface SlideData {
-  slideIndex: number;
-  slideCount: number;
-  currentSlideText: string;
-  allSlidesText?: string[];
-  title?: string;
-  notes?: string;
-}
 
 /** Workbook metadata for context */
 export interface WorkbookInfo {
@@ -242,11 +213,9 @@ export type PromptCategory =
   | "automation"
   | "general"
   | "audit"
-  | "presentation"
   | "reporting"
   | "ca"
   | "compliance-bd"
-  | "writing"
   | "translate"
   | "chart"
   | "finance"
