@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   makeStyles, tokens, Button, Input, Dropdown, Option, Text,
-  Badge, Spinner, Tooltip,
+  Badge, Tooltip, Spinner
 } from '@fluentui/react-components';
 import {
-  AddRegular, DeleteRegular, CheckmarkCircleRegular,
-  ErrorCircleRegular, EyeRegular, EyeOffRegular, RadioButtonRegular, RecordRegular,
-  PlayRegular, TimerRegular, TrophyRegular,
+  AddRegular, DeleteRegular,
+  EyeRegular, EyeOffRegular, RadioButtonRegular, RecordRegular,
+  CheckmarkCircleRegular, ErrorCircleRegular
 } from '@fluentui/react-icons';
 import { useSettings } from '../../hooks/useSettings';
 import { AIProviderType, CustomModel } from '../../types';
 import { GenericOpenAIProvider } from '../../services/ai/GenericOpenAIProvider';
-import { getProvider } from '../../services/ai/ProviderFactory';
 
 const useStyles = makeStyles({
   root: {
@@ -66,27 +65,8 @@ const useStyles = makeStyles({
     border: `1px dashed ${tokens.colorNeutralStroke2}`,
     borderRadius: '10px',
   },
-  leaderboard: {
-    marginTop: '16px',
-    marginBottom: '16px',
-    padding: '16px',
-    borderRadius: '10px',
-    backgroundColor: tokens.colorNeutralBackground2,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-  },
-  leaderboardRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '8px 0',
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    '&:last-child': { borderBottom: 'none' },
-  },
-  leaderboardRank: {
-    width: '24px',
-    fontWeight: 'bold',
-    color: tokens.colorBrandForeground1,
-  },
 });
+
 const PROVIDERS: { id: AIProviderType; label: string; color: string; baseUrl: string }[] = [
   { id: 'nvidia',      label: 'NVIDIA NIM',    color: '#76b900', baseUrl: 'https://integrate.api.nvidia.com/v1' },
   { id: 'openai',      label: 'OpenAI',         color: '#10a37f', baseUrl: 'https://api.openai.com/v1' },
@@ -109,22 +89,72 @@ interface ModelCardProps {
   onDelete: () => void;
 }
 
+/**
+ * ModelCard uses local state for all text inputs so keystrokes are never
+ * lost due to parent re-renders. It only flushes to the parent store when
+ * the input loses focus (onBlur) or when a non-text field changes (dropdown).
+ */
 const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onUpdate, onDelete }) => {
   const classes = useStyles();
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [testError, setTestError] = useState('');
 
-  const update = (patch: Partial<CustomModel>) => onUpdate({ ...model, ...patch });
+  // Local draft state — mirrors the model so inputs are always controlled,
+  // but we only call onUpdate (which saves to settings) on blur / dropdown change.
+  const [draft, setDraft] = useState<CustomModel>(model);
+  // Keep draft in sync if the parent model reference changes externally
+  //  (e.g. after setting it as active), but NOT while the user is typing.
+  const isTypingRef = useRef(false);
+  React.useEffect(() => {
+    if (!isTypingRef.current) {
+      setDraft(model);
+    }
+  }, [model]);
+
+  const handleTextChange = (field: keyof CustomModel, value: string) => {
+    isTypingRef.current = true;
+    setDraft(prev => ({ ...prev, [field]: value }));
+    if (field === 'apiKey' || field === 'modelId' || field === 'baseUrl') {
+      setTestStatus('idle');
+    }
+  };
+
+  const handleBlur = () => {
+    isTypingRef.current = false;
+    // Only save if something actually changed
+    if (
+      draft.name !== model.name ||
+      draft.modelId !== model.modelId ||
+      draft.baseUrl !== model.baseUrl ||
+      draft.apiKey !== model.apiKey
+    ) {
+      onUpdate({ ...model, ...draft });
+    }
+  };
+
+  const handleDropdownChange = (provider: AIProviderType) => {
+    const chosen = PROVIDERS.find(p => p.id === provider);
+    const updated: CustomModel = {
+      ...draft,
+      provider,
+      baseUrl: draft.baseUrl || chosen?.baseUrl || '',
+    };
+    setDraft(updated);
+    onUpdate(updated);
+    setTestStatus('idle');
+  };
 
   const handleTest = async () => {
-    if (!model.apiKey || !model.modelId || !model.baseUrl) return;
+    if (!draft.apiKey || !draft.modelId || !draft.baseUrl) return;
     setTestStatus('testing');
     setTestError('');
+    // Flush draft to parent before testing
+    onUpdate({ ...model, ...draft });
     try {
-      const provider = new GenericOpenAIProvider(model.baseUrl, model.apiKey);
+      const provider = new GenericOpenAIProvider(draft.baseUrl, draft.apiKey);
       const response = await provider.chat({
-        model: model.modelId,
+        model: draft.modelId,
         messages: [{ role: 'user', content: 'Hi' }],
         maxTokens: 5,
         stream: false,
@@ -136,11 +166,9 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
     }
   };
 
-  const _providerColor = PROVIDERS.find(p => p.id === model.provider)?.color || '#888';
-
   return (
     <div className={`${classes.card} ${isActive ? classes.activeCard : ''}`}>
-      {/* Active selector + delete */}
+      {/* Active selector + name + delete */}
       <div className={classes.row}>
         <Tooltip content={isActive ? 'Active model' : 'Set as active'} relationship="label">
           <Button
@@ -152,10 +180,11 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         </Tooltip>
         <Input
           className={classes.flex1}
-          value={model.name}
+          value={draft.name}
           placeholder="Model display name"
           size="small"
-          onChange={(_, d) => update({ name: d.value })}
+          onChange={(_, d) => handleTextChange('name', d.value)}
+          onBlur={handleBlur}
         />
         {isActive && <Badge appearance="filled" color="brand" size="small">Active</Badge>}
         <Button
@@ -171,15 +200,8 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
       <div className={classes.row}>
         <Text className={classes.label}>Provider</Text>
         <Dropdown
-          value={PROVIDERS.find(p => p.id === model.provider)?.label || model.provider}
-          onOptionSelect={(_, d) => {
-            const chosen = PROVIDERS.find(p => p.id === d.optionValue);
-            update({
-              provider: d.optionValue as AIProviderType,
-              // Auto-fill base URL when provider changes
-              baseUrl: model.baseUrl || chosen?.baseUrl || '',
-            });
-          }}
+          value={PROVIDERS.find(p => p.id === draft.provider)?.label || draft.provider}
+          onOptionSelect={(_, d) => handleDropdownChange(d.optionValue as AIProviderType)}
           size="small"
           style={{ flex: 1 }}
         >
@@ -199,10 +221,11 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         <Text className={classes.label}>Model ID</Text>
         <Input
           className={classes.flex1}
-          value={model.modelId}
+          value={draft.modelId}
           placeholder="e.g. meta/llama-3.1-70b-instruct"
           size="small"
-          onChange={(_, d) => update({ modelId: d.value })}
+          onChange={(_, d) => handleTextChange('modelId', d.value)}
+          onBlur={handleBlur}
         />
       </div>
 
@@ -211,24 +234,26 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         <Text className={classes.label}>Base URL</Text>
         <Input
           className={classes.flex1}
-          value={model.baseUrl || ''}
-          placeholder={PROVIDERS.find(p => p.id === model.provider)?.baseUrl || 'https://...'}
+          value={draft.baseUrl || ''}
+          placeholder={PROVIDERS.find(p => p.id === draft.provider)?.baseUrl || 'https://...'}
           size="small"
-          onChange={(_, d) => update({ baseUrl: d.value })}
+          onChange={(_, d) => handleTextChange('baseUrl', d.value)}
+          onBlur={handleBlur}
         />
       </div>
 
       {/* API Key */}
-      {model.provider !== 'ollama' && (
+      {draft.provider !== 'ollama' && (
         <div className={classes.row}>
           <Text className={classes.label}>API Key</Text>
           <Input
             className={classes.flex1}
             type={showKey ? 'text' : 'password'}
-            value={model.apiKey}
+            value={draft.apiKey}
             placeholder="Paste API key here"
             size="small"
-            onChange={(_, d) => { update({ apiKey: d.value }); setTestStatus('idle'); }}
+            onChange={(_, d) => handleTextChange('apiKey', d.value)}
+            onBlur={handleBlur}
             contentAfter={
               <Button
                 appearance="transparent"
@@ -242,7 +267,7 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
             size="small"
             appearance="outline"
             onClick={handleTest}
-            disabled={testStatus === 'testing' || !model.apiKey || !model.modelId || !model.baseUrl}
+            disabled={testStatus === 'testing' || !draft.apiKey || !draft.modelId || !draft.baseUrl}
             icon={testStatus === 'testing' ? <Spinner size="extra-tiny" /> : undefined}
           >
             {testStatus === 'testing' ? '' : 'Test'}
@@ -270,8 +295,6 @@ export const CustomModelManager: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const models = settings.customModels || [];
   const activeId = settings.activeCustomModelId || '';
-  const [testRankings, setTestRankings] = useState<{ id: string, name: string, latency: number, status: 'ok'|'error', error?: string }[]>([]);
-  const [isTestingAll, setIsTestingAll] = useState(false);
 
   const saveModels = (updated: CustomModel[]) => updateSettings({ customModels: updated });
 
@@ -284,11 +307,11 @@ export const CustomModelManager: React.FC = () => {
       apiKey: '',
     };
     const updated = [...models, newModel];
-    saveModels(updated);
     // Auto-set as active if it's the first
-    if (updated.length === 1) {
-      updateSettings({ customModels: updated, activeCustomModelId: newModel.id });
-    }
+    updateSettings({
+      customModels: updated,
+      ...(updated.length === 1 ? { activeCustomModelId: newModel.id } : {}),
+    });
   };
 
   const updateModel = (updated: CustomModel) => {
@@ -297,10 +320,10 @@ export const CustomModelManager: React.FC = () => {
 
   const deleteModel = (id: string) => {
     const updated = models.filter(m => m.id !== id);
-    saveModels(updated);
-    if (activeId === id) {
-      updateSettings({ customModels: updated, activeCustomModelId: updated[0]?.id || '' });
-    }
+    updateSettings({
+      customModels: updated,
+      ...(activeId === id ? { activeCustomModelId: updated[0]?.id || '' } : {}),
+    });
   };
 
   const setActive = (id: string) => {
@@ -314,91 +337,14 @@ export const CustomModelManager: React.FC = () => {
     }
   };
 
-  const handleTestAll = async () => {
-    setIsTestingAll(true);
-    setTestRankings([]);
-
-    if (models.length === 0) {
-      setIsTestingAll(false);
-      return;
-    }
-
-    const results = await Promise.allSettled(models.map(async (model) => {
-      if (!model.apiKey || !model.modelId) {
-        return { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: 'Missing API Key or Model ID' };
-      }
-      const start = performance.now();
-      try {
-        if (model.provider === 'anthropic' && !model.baseUrl) {
-          const { AnthropicProvider } = await import('../../services/ai/AnthropicProvider');
-          const p = new AnthropicProvider();
-          p.setApiKey(model.apiKey);
-          await p.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
-        } else if (model.provider === 'gemini' && !model.baseUrl) {
-          const { GeminiProvider } = await import('../../services/ai/GeminiProvider');
-          const p = new GeminiProvider();
-          p.setApiKey(model.apiKey);
-          await p.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
-        } else {
-          const provider = model.baseUrl ? new GenericOpenAIProvider(model.baseUrl, model.apiKey) : getProvider(model.provider);
-          if (!model.baseUrl) provider.setApiKey(model.apiKey);
-          await provider.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
-        }
-        const end = performance.now();
-        return { id: model.id, name: model.name, latency: Math.round(end - start), status: 'ok' as const };
-      } catch (e) {
-        return { id: model.id, name: model.name, latency: 999999, status: 'error' as const, error: (e as Error).message };
-      }
-    }));
-
-    const rankings = results.map(r => r.status === 'fulfilled' ? r.value : {
-      id: '', name: '', latency: 999999, status: 'error' as const, error: 'Unknown error',
-    }).filter(r => r.id);
-
-    setTestRankings(rankings.sort((a, b) => a.latency - b.latency));
-    setIsTestingAll(false);
-  };
-
   return (
     <div className={classes.root}>
       <div className={classes.header}>
         <Text weight="semibold">My Models ({models.length})</Text>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button icon={isTestingAll ? <Spinner size="extra-tiny" /> : <PlayRegular />} size="small" appearance="secondary" onClick={handleTestAll} disabled={isTestingAll || models.length === 0}>
-            {isTestingAll ? 'Testing...' : 'Test All'}
-          </Button>
-          <Button icon={<AddRegular />} size="small" appearance="primary" onClick={addModel}>
-            Add Model
-          </Button>
-        </div>
+        <Button icon={<AddRegular />} size="small" appearance="primary" onClick={addModel}>
+          Add Model
+        </Button>
       </div>
-
-      {testRankings.length > 0 && (
-        <div className={classes.leaderboard}>
-          <Text weight="semibold" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-            <TrophyRegular style={{ color: '#d97706' }}/> API Latency Leaderboard
-          </Text>
-          {testRankings.map((r, i) => (
-            <div key={r.id} className={classes.leaderboardRow}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Text className={classes.leaderboardRank}>#{i + 1}</Text>
-                <Text>{r.name}</Text>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {r.status === 'ok' ? (
-                  <Text style={{ color: tokens.colorPaletteGreenForeground1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <TimerRegular /> {r.latency}ms
-                  </Text>
-                ) : (
-                  <Text style={{ color: tokens.colorPaletteRedForeground1, fontSize: '11px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    Error: {r.error}
-                  </Text>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {models.length === 0 ? (
         <div className={classes.empty}>
