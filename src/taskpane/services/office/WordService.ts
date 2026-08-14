@@ -135,64 +135,57 @@ export class WordService {
 
   static async getContextForAI(maxChars: number = 8000): Promise<string> {
     try {
-      return await Word.run(async (context) => {
+      // Get full document structure + text
+      return Word.run(async (context) => {
         const body = context.document.body;
         const paragraphs = body.paragraphs;
         const tables = body.tables;
-        const properties = context.document.properties;
+        const props = context.document.properties;
 
-        body.load('text');
-        paragraphs.load(['style', 'text']);
-        tables.load('items');
-        properties.load(['title', 'author', 'wordCount']);
+        body.load("text");
+        paragraphs.load(["style", "text"]);
+        tables.load("items");
+        props.load(["title", "author"]);
+
         await context.sync();
 
-        const parts: string[] = [];
+        let res = `Document: ${props.title || 'Untitled'}\n`;
+        res += `Author: ${props.author || 'Unknown'}\n`;
+        const wordCount = body.text ? body.text.split(/\s+/).filter(w => w.length > 0).length : 0;
+        res += `Word count: ~${wordCount}\n`;
+        res += `Paragraphs: ${paragraphs.items.length}, Tables: ${tables.items.length}\n\n`;
 
-        // Document properties
-        const title = properties.title || 'Untitled';
-        const author = properties.author || 'Unknown';
-        const fullText = body.text || '';
-        const wordCount = fullText.split(/\s+/).filter(w => w.length > 0).length;
-        parts.push(`Document: "${title}" | Author: ${author} | ~${wordCount} words | ${tables.items.length} table(s)`);
-
-        // Heading structure
+        // List headings for structure overview
         const headings: string[] = [];
         paragraphs.items.forEach(p => {
-          const s = (p.style || '').toString().toLowerCase();
-          if (s.includes('heading') || s.includes('title')) {
-            const t = (p.text || '').trim();
-            if (t) headings.push(`  [${p.style}] ${t}`);
+          const style = (p.style || '').toString();
+          if (style.toLowerCase().includes('heading') || style.toLowerCase().includes('title')) {
+            headings.push(`  ${style}: ${p.text.substring(0, 100)}`);
           }
         });
         if (headings.length > 0) {
-          parts.push(`\nDocument Structure (headings):\n${headings.slice(0, 40).join('\n')}`);
+          res += `Document Structure (headings):\n${headings.join('\n')}\n\n`;
         }
 
-        // Full text (capped)
-        const excerpt = fullText.substring(0, maxChars);
-        parts.push(`\nFull Document Text${fullText.length > maxChars ? ` (first ${maxChars} chars)` : ''}:\n${excerpt}`);
-        if (fullText.length > maxChars) {
-          parts.push(`\n(Document is ${fullText.length} chars total — ${fullText.length - maxChars} chars not shown)`);
-        }
+        // Include selected text if any, otherwise full document text
+        const selection = context.document.getSelection();
+        selection.load("text");
+        await context.sync();
 
-        return parts.join('\n');
+        if (selection.text && selection.text.trim().length > 0) {
+          res += `Selected Text:\n${selection.text.substring(0, maxChars)}`;
+        } else {
+          res += `Document Text:\n${(body.text || "").substring(0, maxChars)}`;
+          if (body.text && body.text.length > maxChars) {
+            res += `\n...(truncated, showing first ${maxChars} of ${body.text.length} chars)`;
+          }
+        }
+        return res;
       });
     } catch (e) {
       return `Unable to read Word context: ${(e as Error).message}`;
     }
   }
-
-  /** Replace the entire document body with new text. */
-  static async replaceEntireBody(newText: string): Promise<void> {
-    return Word.run(async (context) => {
-      const body = context.document.body;
-      body.clear();
-      body.insertParagraph(newText, Word.InsertLocation.start);
-      await context.sync();
-    });
-  }
-
 
   // ── From office-agents: Word eval_js escape hatch ─────────────────────────
   /**

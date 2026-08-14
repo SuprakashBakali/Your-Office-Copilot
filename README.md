@@ -87,6 +87,19 @@ Switch between providers instantly from the **Settings Panel** without restartin
 
 > **💡 Zero-Cost Tip:** You can run this entire project for **$0** using NVIDIA NIM, Google Gemini, Groq, or offline Ollama models.
 
+---
+
+## 📖 Deep-Dive Documentation & Page Details
+
+For a comprehensive architectural and UI reference covering every page, panel, ribbon command, and React component, consult our documentation:
+
+- [📄 **PAGE_DETAILS.md**](PAGE_DETAILS.md) — Complete walkthrough of:
+  - Application Layout, Fluent UI v9 Design System, and Theme Mode (`Light`, `Dark`, `Auto`).
+  - Primary Navigation Toolbar & Conversation Manager (`NavigationTabs.tsx`).
+  - Chat Page, Message Bubbles, Code Block Copier, and Prompt Templates Drawer (`ChatPanel.tsx`).
+  - Settings Page, API Key Storage, Custom Model Manager, and Privacy Guardrails (`SettingsPanel.tsx`).
+  - Direct Automation Engines for Excel, Word, and PowerPoint (`services/office/`).
+- [⚡ **OPTIMIZATIONS.md**](OPTIMIZATIONS.md) — Summary of bundle size reductions, webpack code splitting, CSV range token optimizations, and rendering enhancements.
 
 ---
 

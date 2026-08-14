@@ -1,6 +1,6 @@
 import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { makeStyles, tokens, Button, Textarea, Tooltip, Text, Spinner } from '@fluentui/react-components';
-import { SendRegular, StopRegular, KeyboardRegular } from '@fluentui/react-icons';
+import { SendRegular, StopRegular, KeyboardRegular, AttachRegular, DismissRegular } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 
 const useStyles = makeStyles({
@@ -20,14 +20,19 @@ const useStyles = makeStyles({
     minHeight: '36px',
     maxHeight: '120px',
   },
+  attachBtn: {
+    minWidth: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
   sendBtn: {
     minWidth: '36px',
     height: '36px',
     borderRadius: '50%',
     transition: 'all 0.2s ease',
+    flexShrink: 0,
   },
-  // When streaming, the send button gets a subtle pulsing border so the
-  // user can see at a glance that the LLM is still generating.
   sendBtnStreaming: {
     animationName: {
       '0%, 100%': { boxShadow: '0 0 0 0 rgba(118, 185, 0, 0.4)' },
@@ -71,6 +76,9 @@ const useStyles = makeStyles({
   statusError: {
     backgroundColor: tokens.colorPaletteRedForeground1,
   },
+  statusDone: {
+    backgroundColor: '#76B900',
+  },
   statusText: {
     color: tokens.colorNeutralForeground4,
   },
@@ -78,10 +86,44 @@ const useStyles = makeStyles({
     color: '#76B900',
     fontWeight: 600,
   },
+  statusTextDone: {
+    color: '#76B900',
+    fontWeight: 600,
+  },
+  statusTextError: {
+    color: tokens.colorPaletteRedForeground1,
+    fontWeight: 600,
+  },
+  attachments: {
+    display: 'flex',
+    gap: '4px',
+    flexWrap: 'wrap',
+    marginBottom: '4px',
+  },
+  attachmentChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '2px 8px',
+    borderRadius: '12px',
+    backgroundColor: tokens.colorNeutralBackground3,
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorNeutralForeground2,
+  },
+  hiddenInput: {
+    display: 'none',
+  },
 });
 
+export interface Attachment {
+  name: string;
+  type: string;       // MIME type
+  dataUrl: string;    // base64 data URL
+  isImage: boolean;
+}
+
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, attachments?: Attachment[]) => void;
   disabled?: boolean;
   onCancel?: () => void;
   isStreaming?: boolean;
@@ -91,9 +133,23 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel, isStreaming, error }) => {
   const classes = useStyles();
   const [text, setText] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [justFinished, setJustFinished] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevStreamingRef = useRef(false);
   const { pendingPrompt } = useAppState();
   const dispatch = useAppDispatch();
+
+  // Detect transition from streaming → idle to show "Done" confirmation
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      setJustFinished(true);
+      const timer = setTimeout(() => setJustFinished(false), 3000);
+      return () => clearTimeout(timer);
+    }
+    prevStreamingRef.current = !!isStreaming;
+  }, [isStreaming]);
 
   useEffect(() => {
     if (pendingPrompt) {
@@ -107,8 +163,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
 
   const handleSend = () => {
     if (text.trim() && !disabled) {
-      onSend(text.trim());
+      onSend(text.trim(), attachments.length > 0 ? attachments : undefined);
       setText('');
+      setAttachments([]);
     }
   };
 
@@ -119,9 +176,67 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newAttachments: Attachment[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > 10 * 1024 * 1024) {
+        dispatch({ type: 'SET_NOTIFICATION', payload: { type: 'warning', message: `File "${file.name}" is too large (max 10MB)` } });
+        continue;
+      }
+      const dataUrl = await fileToDataUrl(file);
+      newAttachments.push({
+        name: file.name,
+        type: file.type,
+        dataUrl,
+        isImage: file.type.startsWith('image/'),
+      });
+    }
+    setAttachments(prev => [...prev, ...newAttachments]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (idx: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== idx));
+  };
+
   return (
     <div className={classes.container}>
+      {attachments.length > 0 && (
+        <div className={classes.attachments}>
+          {attachments.map((att, idx) => (
+            <div key={idx} className={classes.attachmentChip}>
+              <AttachRegular style={{ fontSize: '10px' }} />
+              <span>{att.name}</span>
+              <DismissRegular
+                style={{ fontSize: '10px', cursor: 'pointer', marginLeft: '2px' }}
+                onClick={() => removeAttachment(idx)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,application/pdf,.xlsx,.xls,.docx,.doc,.pptx,.ppt,.csv,.txt"
+        onChange={handleFileSelect}
+        className={classes.hiddenInput}
+      />
       <div className={classes.inputArea}>
+        <Tooltip content="Attach image/PDF/file" relationship="label">
+          <Button
+            className={classes.attachBtn}
+            icon={<AttachRegular />}
+            appearance="subtle"
+            shape="circular"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled}
+            size="medium"
+          />
+        </Tooltip>
         <Textarea
           ref={textareaRef}
           className={classes.textarea}
@@ -151,7 +266,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
               appearance="primary"
               shape="circular"
               onClick={handleSend}
-              disabled={!text.trim()}
+              disabled={!text.trim() && attachments.length === 0}
             />
           </Tooltip>
         )}
@@ -161,17 +276,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
           <KeyboardRegular style={{ fontSize: '10px', marginRight: '2px' }} />
           Enter to send · Shift+Enter for new line
         </Text>
-        {/* Status indicator — shows idle / generating / error state */}
         <div className={classes.status}>
           {error ? (
             <>
               <span className={`${classes.statusDot} ${classes.statusError}`} />
-              <span className={`${classes.statusText}`} style={{ color: tokens.colorPaletteRedForeground1 }}>Error</span>
+              <span className={`${classes.statusText} ${classes.statusTextError}`}>Error</span>
             </>
           ) : isStreaming ? (
             <>
               <Spinner size="extra-tiny" />
               <span className={`${classes.statusText} ${classes.statusTextActive}`}>Generating...</span>
+            </>
+          ) : justFinished ? (
+            <>
+              <span className={`${classes.statusDot} ${classes.statusDone}`} />
+              <span className={`${classes.statusText} ${classes.statusTextDone}`}>✓ Done</span>
             </>
           ) : (
             <>
@@ -184,3 +303,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
     </div>
   );
 };
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}

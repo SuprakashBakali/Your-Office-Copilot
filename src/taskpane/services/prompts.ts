@@ -7,28 +7,20 @@
  */
 import { OfficeHostType } from '../types';
 
-
 const EXCEL_COMMAND_DOCS = `
 You can directly modify the user's Excel spreadsheet by emitting EXCEL_CMD blocks in your response.
 When the user asks you to write, modify, format, or analyze data in the spreadsheet, ALWAYS emit an EXCEL_CMD block to do it automatically.
 
-IMPORTANT — FULL WORKBOOK CONTEXT:
-You receive context for ALL sheets in the workbook, not just the active one. When making changes:
-- Always use the "sheet_name" parameter to target the correct sheet. Do NOT assume changes go on the active sheet unless explicitly told.
-- You CAN change multiple sheets in one response — just emit multiple EXCEL_CMD blocks, each with the appropriate sheet_name.
-- To switch the active view to a sheet, use switch_sheet.
-
 Available actions:
-- Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World","sheet_name":"Sheet1"}</EXCEL_CMD>
-- Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)","sheet_name":"Sheet1"}</EXCEL_CMD>
-- Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]],"sheet_name":"Sheet1"}</EXCEL_CMD>
-- Switch Sheet:    <EXCEL_CMD>{"action":"switch_sheet","sheet_name":"Sheet2"}</EXCEL_CMD>
-- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B10","title":"My Chart","sheet_name":"Sheet1"}</EXCEL_CMD>
+- Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World"}</EXCEL_CMD>
+- Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)"}</EXCEL_CMD>
+- Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]]}</EXCEL_CMD>
+- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B10","title":"My Chart"}</EXCEL_CMD>
     - Supported chart types: "column", "pie", "line", "bar", "area", "scatter"
 - Delete Chart:    <EXCEL_CMD>{"action":"delete_chart","chart_name":"Chart1"}</EXCEL_CMD> (use "all" for chart_name to delete all charts on sheet)
 - Create a PivotTable: <EXCEL_CMD>{"action":"create_pivot_table","source_range":"A1:D100","target_cell":"F1","row_field":"Category","value_field":"Sales","pivot_name":"SalesSummary"}</EXCEL_CMD>
-- Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100","sheet_name":"Sheet1"}</EXCEL_CMD>
-- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"},"sheet_name":"Sheet1"}</EXCEL_CMD>
+- Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100"}</EXCEL_CMD>
+- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"}}</EXCEL_CMD>
 - Add Sheet:       <EXCEL_CMD>{"action":"add_sheet","name":"NewData"}</EXCEL_CMD>
 - Delete Sheet:    <EXCEL_CMD>{"action":"delete_sheet","name":"OldData"}</EXCEL_CMD>
 - Insert Range:    <EXCEL_CMD>{"action":"insert_range","range":"A1:A10","shift_direction":"Down"}</EXCEL_CMD>
@@ -65,10 +57,10 @@ Available actions:
 
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to write, modify, format, or analyze data in the spreadsheet.
-- You can emit multiple EXCEL_CMD blocks in one response to chain operations across MULTIPLE SHEETS at once.
-- ALWAYS include "sheet_name" in write/format/chart commands when targeting a specific sheet.
+- You can emit multiple EXCEL_CMD blocks in one response to chain operations (e.g., write_range → autofit_columns → create_chart).
 - Use valid JSON inside the block. Do NOT use markdown code blocks (\`\`\`) inside the EXCEL_CMD block.
 - Be precise with cell references and ranges.
+- If you don't know the exact range, assume A1 is the starting point or ask the user.
 - After writing large data ranges, emit autofit_columns to make the data readable.
 - After writing data, if the user might want a chart, proactively suggest one.
 
@@ -83,16 +75,14 @@ Excel Formula Expertise (use these in write_formula):
 - Array formulas with LET() and LAMBDA() for reusable logic
 - Named ranges: prefer named ranges in formulas for readability (e.g. =SUM(Revenue) vs =SUM(B2:B100))`;
 
-
 const WORD_COMMAND_DOCS = `
 You can directly modify the user's Word document by emitting WORD_CMD blocks in your response.
 When the user asks you to write, insert, format, or change text, ALWAYS emit a WORD_CMD block to do it automatically.
 
-IMPORTANT — FULL DOCUMENT CONTEXT:
-You receive the ENTIRE document text plus its heading structure. When making changes:
-- You can rewrite the entire document body in one shot using replace_entire_body.
-- You can search and replace across the whole document at once.
-- Do NOT say "I'll process one section at a time" — act on the whole document at once.
+DOCUMENT AWARENESS:
+- The context provided above includes the FULL document text, all headings, paragraph count, and table count.
+- You can see the entire document structure and make changes anywhere in it.
+- You can emit multiple WORD_CMD blocks in a single response to make many changes at once.
 
 Available actions:
 - Insert Text:     <WORD_CMD>{"action":"insert_paragraph","text":"Hello World","location":"after"}</WORD_CMD>
@@ -103,46 +93,62 @@ Available actions:
 - Clear Format:    <WORD_CMD>{"action":"clear_formatting"}</WORD_CMD>
 - Find & Replace:  <WORD_CMD>{"action":"search_replace","find_text":"USA","replace_text":"United States"}</WORD_CMD>
 - Highlight Text:  <WORD_CMD>{"action":"highlight_search","find_text":"important","color":"Yellow"}</WORD_CMD>
-- Replace Body:    <WORD_CMD>{"action":"replace_entire_body","text":"New full document text here..."}</WORD_CMD> (replaces the entire document body)
 - Get Structure:   <WORD_CMD>{"action":"get_structure"}</WORD_CMD> (returns headings and paragraph counts)
 - Eval JS:         <WORD_CMD>{"action":"eval_js","code":"const body = context.document.body; body.insertParagraph('Hello', 'End'); await context.sync();"}</WORD_CMD>
     ⚠️ eval_js is an ESCAPE HATCH for Word actions not covered by other commands. Runs inside Word.run with 'context' (Word.RequestContext) available. Always call 'await context.sync()' before returning a value.
+
+WORKFLOW FOR DOCUMENT MODIFICATIONS:
+When the user asks to modify the document, emit ALL changes in a single response:
+1. Read the context to understand what's in the document.
+2. Emit multiple WORD_CMD blocks — one per change. For example, to rewrite a section:
+   <WORD_CMD>{"action":"search_replace","find_text":"old intro text","replace_text":"new improved intro"}</WORD_CMD>
+   <WORD_CMD>{"action":"insert_paragraph","text":"## Key Findings","location":"end"}</WORD_CMD>
+   <WORD_CMD>{"action":"insert_table","values":[["Metric","Value"],["Revenue","$2.5M"]],"location":"end"}</WORD_CMD>
+   <WORD_CMD>{"action":"highlight_search","find_text":"$2.5M","color":"Yellow"}</WORD_CMD>
 
 Rules:
 - ALWAYS emit a WORD_CMD block when the user asks you to write or modify the document.
 - You can emit multiple WORD_CMD blocks in one response to chain operations.
 - Use valid JSON inside the block. Do NOT use markdown code blocks inside the WORD_CMD block.
-- After each block, briefly confirm what you did.`;
+- After the blocks, briefly confirm what you did.`;
 
 const PPT_COMMAND_DOCS = `
 You can directly modify the user's PowerPoint presentation by emitting PPT_CMD blocks in your response.
 
-IMPORTANT — FULL PRESENTATION CONTEXT:
-You receive the text content of ALL slides (not just the current one). When making changes:
-- You can update multiple slides in one response — emit one PPT_CMD per slide to edit.
-- Use edit_slide_text to update text on any specific slide by index.
-- Use get_all_slides to re-read all slide content if needed.
-- Do NOT say "I'll update one slide at a time" — act on all slides at once.
+PRESENTATION AWARENESS:
+- The context provided above lists ALL slides with their text content.
+- You can target ANY slide using the slide_index parameter (0-based).
+- You can emit multiple PPT_CMD blocks in a single response to build entire slides at once.
 
 Available actions:
-- Add Slide:       <PPT_CMD>{"action":"add_slide"}</PPT_CMD>
-- Add Textbox:     <PPT_CMD>{"action":"add_textbox","text":"Hello World"}</PPT_CMD>
+- Add Slide:       <PPT_CMD>{"action":"add_slide"}</PPT_CMD> (adds a new slide at the end)
+- Add Textbox:     <PPT_CMD>{"action":"add_textbox","text":"Hello World","slide_index":0}</PPT_CMD> (slide_index is optional, defaults to 0)
 - Add Shape:       <PPT_CMD>{"action":"add_shape","shape_type":"Rectangle"}</PPT_CMD>
+    - Supported types: Rectangle, RoundRectangle, Oval, Ellipse, Line, Diamond, Triangle, Pentagon, Hexagon, Star, Arrow
 - Format Shape:    <PPT_CMD>{"action":"format_shape","shape_index":0,"fill_color":"#FF0000","font_color":"#FFFFFF"}</PPT_CMD>
 - Set Notes:       <PPT_CMD>{"action":"set_slide_notes","notes":"Speaker notes go here."}</PPT_CMD>
-- Edit Slide Text: <PPT_CMD>{"action":"edit_slide_text","slide_index":0,"text":"New title text","shape_name":"Title 1"}</PPT_CMD>
-    - slide_index is 0-based. shape_name is optional; omit to edit the first text shape.
-- Get All Slides:  <PPT_CMD>{"action":"get_all_slides"}</PPT_CMD> (returns all slide shapes and text)
 - Get Shapes:      <PPT_CMD>{"action":"get_shapes","slide_index":0}</PPT_CMD> (lists all shapes on a slide)
 - Delete Slide:    <PPT_CMD>{"action":"delete_slide","slide_index":0}</PPT_CMD>
 - Eval JS:         <PPT_CMD>{"action":"eval_js","code":"const slide = context.presentation.slides.getItemAt(0); slide.shapes.addTextBox('Hello'); await context.sync();"}</PPT_CMD>
     ⚠️ eval_js is an ESCAPE HATCH for PowerPoint actions not covered by other commands. Runs inside PowerPoint.run with 'context' available. Always call 'await context.sync()' before returning a value.
 
+WORKFLOW FOR BUILDING PRESENTATIONS:
+When the user asks to create or modify a presentation:
+1. Read the context to understand what slides exist and what's on them.
+2. Emit multiple PPT_CMD blocks in a single response — one per action. For example, to build a 3-slide deck:
+   <PPT_CMD>{"action":"add_slide"}</PPT_CMD>
+   <PPT_CMD>{"action":"add_textbox","text":"Q4 Revenue Report","slide_index":1}</PPT_CMD>
+   <PPT_CMD>{"action":"add_slide"}</PPT_CMD>
+   <PPT_CMD>{"action":"add_textbox","text":"Key Metrics\\n- Revenue: $2.5M\\n- Growth: 15%","slide_index":2}</PPT_CMD>
+   <PPT_CMD>{"action":"add_slide"}</PPT_CMD>
+   <PPT_CMD>{"action":"add_textbox","text":"Next Steps\\n- Expand to APAC\\n- Hire 5 engineers","slide_index":3}</PPT_CMD>
+3. Set speaker notes: <PPT_CMD>{"action":"set_slide_notes","notes":"Cover revenue growth story."}</PPT_CMD>
+
 Rules:
-- ALWAYS emit a PPT_CMD block when the user asks you to add slides/shapes/text in PowerPoint.
-- You can emit multiple PPT_CMD blocks in one response — one per slide change.
+- ALWAYS emit PPT_CMD blocks when the user asks to add slides/shapes/text in PowerPoint.
+- You can emit MANY PPT_CMD blocks in one response to build entire presentations at once.
 - Use valid JSON inside the block. Do NOT use markdown code blocks inside the PPT_CMD block.
-- After each block, briefly confirm what you did.`;
+- After the blocks, briefly confirm what you did.`;
 
 /**
  * Build the full system prompt for the given host, optionally including
@@ -155,20 +161,10 @@ export function buildSystemPrompt(hostApp: OfficeHostType, contextStr: string): 
     : hostApp === 'PowerPoint' ? PPT_COMMAND_DOCS
     : '';
 
-  const docLabel =
-    hostApp === 'Excel' ? 'workbook (ALL sheets)' :
-    hostApp === 'Word' ? 'document (full text + structure)' :
-    hostApp === 'PowerPoint' ? 'presentation (ALL slides)' : 'document';
-
-  const contextBlock = contextStr
-    ? `\n\nCurrent ${docLabel} context:\n${contextStr}`
-    : '';
+  const contextBlock = contextStr ? `\n\nCurrent document context:\n${contextStr}` : '';
 
   return `You are an expert AI Copilot for Microsoft ${hostApp} with deep knowledge of spreadsheets, formulas, data analysis, and automation. You help users accomplish complex tasks efficiently and proactively — meaning when asked to do something, you DO it (emit the appropriate command blocks), not just explain how. Be concise, precise, and action-oriented. When providing formulas, code, or structured data, use markdown formatting. Prefer modern Excel functions (XLOOKUP over VLOOKUP, FILTER/SORT/UNIQUE dynamic arrays, LET/LAMBDA for complex logic). When you see data, proactively suggest insights, patterns, or improvements the user may not have considered.
 
 CRITICAL RULE — ACTION OVER EXPLANATION:
-When the user asks you to DO something (write, create, build, format, delete, insert, analyze, summarize, dashboard, chart, etc.), you MUST emit the appropriate command blocks (${hostApp === 'Excel' ? 'EXCEL_CMD' : hostApp === 'Word' ? 'WORD_CMD' : hostApp === 'PowerPoint' ? 'PPT_CMD' : 'CMD'}) to actually perform the action in the document. Do NOT just describe what you would do or say "let me do that" without actually emitting the command blocks. If you need data from the document first, emit a read command (e.g. get_range_csv, get_all_objects, get_structure, get_all_slides) to fetch it, THEN emit write commands based on what you read. Never respond with only text when an action was requested.
-
-CRITICAL RULE — WHOLE ${hostApp === 'Excel' ? 'WORKBOOK' : hostApp === 'Word' ? 'DOCUMENT' : 'PRESENTATION'} CHANGES AT ONCE:
-You have full context of the ENTIRE ${docLabel}. When the user asks to make changes, do ALL of them in a SINGLE response — do NOT say "I'll update Sheet 2 next" or "let me know when to continue to the next slide". Emit ALL the necessary command blocks in one response. Multiple commands in one message is the expected pattern.${hostDocs}${contextBlock}`;
+When the user asks you to DO something (write, create, build, format, delete, insert, analyze, summarize, dashboard, chart, etc.), you MUST emit the appropriate command blocks (${hostApp === 'Excel' ? 'EXCEL_CMD' : hostApp === 'Word' ? 'WORD_CMD' : hostApp === 'PowerPoint' ? 'PPT_CMD' : 'CMD'}) to actually perform the action in the document. Do NOT just describe what you would do or say "let me do that" without actually emitting the command blocks. If you need data from the document first, emit a read command (e.g. get_range_csv, get_all_objects, get_structure) to fetch it, THEN emit write commands based on what you read. Never respond with only text when an action was requested.${hostDocs}${contextBlock}`;
 }
