@@ -138,13 +138,125 @@ export class PowerPointService {
 
   static async getContextForAI(): Promise<string> {
     try {
+      // Use PowerPointApi 1.3+ to read all slides
+      if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.3')) {
+        return await PowerPoint.run(async (context) => {
+          const slides = context.presentation.slides;
+          slides.load('items/id');
+          await context.sync();
+
+          const parts: string[] = [];
+          parts.push(`Presentation: ${slides.items.length} slide(s)`);
+
+          for (let i = 0; i < slides.items.length; i++) {
+            const slide = slides.items[i];
+            const shapes = slide.shapes;
+            shapes.load('items/name, items/type');
+            await context.sync();
+
+            const slideTexts: string[] = [];
+            for (const shape of shapes.items) {
+              try {
+                const textFrame = (shape as any).textFrame;
+                if (textFrame) {
+                  textFrame.load('text');
+                  await context.sync();
+                  const t = (textFrame.text || '').trim();
+                  if (t) slideTexts.push(`[${shape.name}]: ${t}`);
+                }
+              } catch { /* shape has no text */ }
+            }
+
+            parts.push(`\n--- Slide ${i + 1} ---`);
+            if (slideTexts.length > 0) {
+              parts.push(slideTexts.join('\n'));
+            } else {
+              parts.push('(no text content)');
+            }
+          }
+
+          return parts.join('\n');
+        });
+      }
+      // Fallback for older API
       const slide = await this.getCurrentSlide();
       if (slide.currentSlideText) {
-        return `Selected Text: ${slide.currentSlideText}`;
+        return `Current slide text: ${slide.currentSlideText}`;
       }
       return `PowerPoint active, but no text selected or readable.`;
     } catch (e) {
       return `Unable to read PowerPoint context: ${(e as Error).message}`;
+    }
+  }
+
+  /** Get text content of all slides as a structured string. */
+  static async getAllSlidesText(): Promise<{ slideIndex: number; shapes: { name: string; text: string }[] }[]> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.3')) {
+      return PowerPoint.run(async (context) => {
+        const slides = context.presentation.slides;
+        slides.load('items/id');
+        await context.sync();
+
+        const result: { slideIndex: number; shapes: { name: string; text: string }[] }[] = [];
+
+        for (let i = 0; i < slides.items.length; i++) {
+          const slide = slides.items[i];
+          const shapes = slide.shapes;
+          shapes.load('items/name, items/type');
+          await context.sync();
+
+          const shapeTexts: { name: string; text: string }[] = [];
+          for (const shape of shapes.items) {
+            try {
+              const textFrame = (shape as any).textFrame;
+              if (textFrame) {
+                textFrame.load('text');
+                await context.sync();
+                const t = (textFrame.text || '').trim();
+                if (t) shapeTexts.push({ name: shape.name, text: t });
+              }
+            } catch { /* no text */ }
+          }
+          result.push({ slideIndex: i, shapes: shapeTexts });
+        }
+        return result;
+      });
+    }
+    return [];
+  }
+
+  /** Edit text on a specific slide's first text shape (or a named shape). */
+  static async editSlideText(slideIndex: number, newText: string, shapeName?: string): Promise<void> {
+    if (typeof PowerPoint !== 'undefined' && Office.context.requirements.isSetSupported('PowerPointApi', '1.4')) {
+      return PowerPoint.run(async (context) => {
+        const slide = context.presentation.slides.getItemAt(slideIndex);
+        const shapes = slide.shapes;
+        shapes.load('items/name, items/type');
+        await context.sync();
+
+        // Find the target shape: by name if given, else the first shape with a text frame
+        let targetShape: any = null;
+        for (const shape of shapes.items) {
+          if (shapeName) {
+            if (shape.name === shapeName) { targetShape = shape; break; }
+          } else {
+            try {
+              const tf = (shape as any).textFrame;
+              if (tf) { targetShape = shape; break; }
+            } catch { /* no textFrame */ }
+          }
+        }
+
+        if (!targetShape) {
+          throw new Error(`Shape${shapeName ? ` "${shapeName}"` : ''} not found on slide ${slideIndex + 1}`);
+        }
+
+        const textFrame = (targetShape as any).textFrame;
+        textFrame.textRange.text = newText;
+        await context.sync();
+      });
+    } else {
+      throw new Error('editSlideText requires PowerPointApi 1.4+.');
     }
   }
 

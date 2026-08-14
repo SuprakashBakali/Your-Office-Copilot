@@ -7,6 +7,11 @@ import { AIRequestOptions } from '../services/ai/types';
 
 export function useAI() {
   const [isStreaming, setIsStreaming] = useState(false);
+  // isProcessing covers the FULL lifecycle: LLM request → streaming → done.
+  // Callers (e.g. useChat's finishAssistant) resolve AFTER isStreaming goes
+  // false (command execution, state patch). isProcessing stays true until
+  // sendMessage / sendMessageStream's returned promise resolves.
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { settings } = useSettings();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -56,14 +61,19 @@ export function useAI() {
     async (messages: ChatMessage[], options?: any): Promise<string> => {
       try {
         setIsStreaming(true);
+        setIsProcessing(true);
         setError(null);
         const { provider } = resolveProvider();
         const requestOptions = buildRequestOptions(messages, options, false);
         const response = await provider.chat(requestOptions);
         setIsStreaming(false);
+        // NOTE: setIsProcessing(false) is intentionally NOT called here.
+        // It is called by the caller (useChat) once finishAssistant() completes
+        // so the UI stays in "busy" state through command execution.
         return response.content;
       } catch (err) {
         setIsStreaming(false);
+        setIsProcessing(false);
         const msg = (err as Error).message;
         // Don't surface "aborted" as an error — it's a user action.
         if (msg !== 'Stream cancelled' && !(err as Error).name?.includes('Abort')) {
@@ -86,6 +96,7 @@ export function useAI() {
       let fullThinking = '';
       try {
         setIsStreaming(true);
+        setIsProcessing(true);
         setError(null);
         abortControllerRef.current = new AbortController();
 
@@ -116,9 +127,12 @@ export function useAI() {
 
         setIsStreaming(false);
         abortControllerRef.current = null;
+        // NOTE: setIsProcessing(false) is intentionally NOT called here.
+        // useChat calls markProcessingDone() once finishAssistant() completes.
         return { text: fullText, thinking: fullThinking };
       } catch (err) {
         setIsStreaming(false);
+        setIsProcessing(false);
         abortControllerRef.current = null;
         const msg = (err as Error).message;
         if (msg !== 'Stream cancelled' && !(err as Error).name?.includes('Abort')) {
@@ -135,6 +149,12 @@ export function useAI() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+    setIsProcessing(false);
+  }, []);
+
+  /** Called by useChat after finishAssistant() fully completes. */
+  const markProcessingDone = useCallback(() => {
+    setIsProcessing(false);
   }, []);
 
   const switchProvider = useCallback((_provider: AIProviderType) => {
@@ -183,7 +203,9 @@ export function useAI() {
     sendMessage,
     sendMessageStream,
     cancelStream,
+    markProcessingDone,
     isStreaming,
+    isProcessing,
     error,
     switchProvider,
     switchModel,

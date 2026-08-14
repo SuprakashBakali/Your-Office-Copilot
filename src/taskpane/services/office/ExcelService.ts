@@ -138,18 +138,22 @@ export class ExcelService {
     });
   }
 
-  static async writeToRange(address: string, values: any[][]): Promise<void> {
+  static async writeToRange(address: string, values: any[][], sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.values = values;
       await context.sync();
     });
   }
 
-  static async insertFormula(address: string, formula: string): Promise<void> {
+  static async insertFormula(address: string, formula: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.formulas = [[formula]];
       await context.sync();
@@ -199,9 +203,11 @@ export class ExcelService {
     });
   }
 
-  static async createChart(type: string, dataRange: string, title: string): Promise<void> {
+  static async createChart(type: string, dataRange: string, title: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(dataRange);
       let chartType = Excel.ChartType.columnClustered;
       const t = type.toLowerCase();
@@ -235,9 +241,11 @@ export class ExcelService {
     });
   }
 
-  static async clearRange(address: string): Promise<void> {
+  static async clearRange(address: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.clear();
       await context.sync();
@@ -250,10 +258,13 @@ export class ExcelService {
       bold?: boolean; italic?: boolean; backgroundColor?: string; fontColor?: string; fontSize?: number;
       wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General"; 
       verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string 
-    }
+    },
+    sheetName?: string
   ): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       if (opts.bold !== undefined) range.format.font.bold = opts.bold;
       if (opts.italic !== undefined) range.format.font.italic = opts.italic;
@@ -636,29 +647,91 @@ export class ExcelService {
     };
   }
 
-  static async getContextForAI(maxCells: number = 1000): Promise<string> {
+  static async getContextForAI(maxCellsPerSheet: number = 500): Promise<string> {
     try {
-      const data = await this.getSelectedRange();
-      let target = data;
-      let label = 'Selected Range';
-      if (data.rowCount * data.columnCount === 1 && !data.values[0][0]) {
-        target = await this.getUsedRange();
-        label = 'Used Range';
-      }
+      return await Excel.run(async (context) => {
+        const workbook = context.workbook;
+        const sheets = workbook.worksheets;
+        const namedItems = workbook.names;
+        workbook.load('name');
+        sheets.load('items/name, items/visibility');
+        namedItems.load('items/name, items/value');
+        await context.sync();
 
-      const { formatted, isTruncated, rowsShown, totalRows } = this.formatCellValuesForAI(
-        target.values,
-        maxCells,
-      );
-      let res = `Active Sheet: ${target.sheetName}\n${label}: ${target.address}\nData:\n${formatted}`;
-      if (isTruncated) {
-        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows in range to conserve tokens)`;
-      }
-      return res;
+        const parts: string[] = [];
+        parts.push(`Workbook: ${workbook.name || 'Untitled'}`);
+        parts.push(`Sheets (${sheets.items.length}): ${sheets.items.map(s => s.name).join(', ')}`);
+
+        // For each visible sheet: collect used range data, charts, tables, pivot tables
+        for (const sheet of sheets.items) {
+          if (sheet.visibility !== Excel.SheetVisibility.visible) continue;
+
+          const sheetParts: string[] = [`\n--- Sheet: "${sheet.name}" ---`];
+
+          // Used range data
+          try {
+            const usedRange = sheet.getUsedRange();
+            usedRange.load(['address', 'values', 'rowCount', 'columnCount']);
+            const charts = sheet.charts;
+            const tables = sheet.tables;
+            const pivots = sheet.pivotTables;
+            charts.load('items/name');
+            tables.load('items/name');
+            pivots.load('items/name');
+            await context.sync();
+
+            sheetParts.push(`Used range: ${usedRange.address} (${usedRange.rowCount}r × ${usedRange.columnCount}c)`);
+
+            // Data sample
+            const { formatted, isTruncated, rowsShown, totalRows } = this.formatCellValuesForAI(
+              usedRange.values,
+              maxCellsPerSheet,
+            );
+            sheetParts.push(`Data:\n${formatted}`);
+            if (isTruncated) {
+              sheetParts.push(`(showing first ${rowsShown} of ${totalRows} non-empty rows)`);
+            }
+
+            // Charts
+            if (charts.items.length > 0) {
+              sheetParts.push(`Charts: ${charts.items.map(c => c.name).join(', ')}`);
+            }
+            // Tables
+            if (tables.items.length > 0) {
+              sheetParts.push(`Tables: ${tables.items.map(t => t.name).join(', ')}`);
+            }
+            // Pivot tables
+            if (pivots.items.length > 0) {
+              sheetParts.push(`PivotTables: ${pivots.items.map(p => p.name).join(', ')}`);
+            }
+          } catch {
+            sheetParts.push('(empty or unreadable sheet)');
+          }
+
+          parts.push(sheetParts.join('\n'));
+        }
+
+        // Named ranges
+        if (namedItems.items.length > 0) {
+          parts.push(`\nNamed Ranges: ${namedItems.items.map(n => `${n.name}=${n.value}`).join(', ')}`);
+        }
+
+        return parts.join('\n');
+      });
     } catch (e) {
       return `Unable to read Excel context: ${(e as Error).message}`;
     }
   }
+
+  /** Switch the active worksheet. */
+  static async switchSheet(sheetName: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getItem(sheetName);
+      sheet.activate();
+      await context.sync();
+    });
+  }
+
 
   // ── From office-agents: eval_officejs escape hatch ────────────────────────
   /**

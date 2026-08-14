@@ -19,19 +19,19 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
       const cmd = JSON.parse(match[1].trim());
       switch (cmd.action) {
         case 'write_cell':
-          await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);
+          await ExcelService.writeToRange(cmd.cell, [[cmd.value]], cmd.sheet_name);
           results.executed++;
           break;
         case 'write_formula':
-          await ExcelService.insertFormula(cmd.cell, cmd.formula);
+          await ExcelService.insertFormula(cmd.cell, cmd.formula, cmd.sheet_name);
           results.executed++;
           break;
         case 'write_range':
-          await ExcelService.writeToRange(cmd.range, cmd.values);
+          await ExcelService.writeToRange(cmd.range, cmd.values, cmd.sheet_name);
           results.executed++;
           break;
         case 'create_chart':
-          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title);
+          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title, cmd.sheet_name);
           results.executed++;
           break;
         case 'delete_chart':
@@ -43,11 +43,11 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           results.executed++;
           break;
         case 'clear_range':
-          await ExcelService.clearRange(cmd.range);
+          await ExcelService.clearRange(cmd.range, cmd.sheet_name);
           results.executed++;
           break;
         case 'format_range':
-          await ExcelService.formatRange(cmd.range, cmd.options);
+          await ExcelService.formatRange(cmd.range, cmd.options, cmd.sheet_name);
           results.executed++;
           break;
         case 'add_sheet':
@@ -200,6 +200,10 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.deleteNamedRange(cmd.name);
           results.executed++;
           break;
+        case 'switch_sheet':
+          await ExcelService.switchSheet(cmd.sheet_name);
+          results.executed++;
+          break;
         default:
           results.errors.push(`Unknown action: ${cmd.action}`);
       }
@@ -242,6 +246,10 @@ export async function executeWordCommands(text: string): Promise<ExcelCmdResult>
           break;
         case 'search_replace':
           await WordService.searchReplace(cmd.find_text, cmd.replace_text);
+          results.executed++;
+          break;
+        case 'replace_entire_body':
+          await WordService.replaceEntireBody(cmd.text);
           results.executed++;
           break;
         case 'eval_js': {
@@ -322,6 +330,17 @@ export async function executePPTCommands(text: string): Promise<ExcelCmdResult> 
           await PowerPointService.deleteSlide(cmd.slide_index || 0);
           results.executed++;
           break;
+        case 'edit_slide_text': {
+          await PowerPointService.editSlideText(cmd.slide_index ?? 0, cmd.text, cmd.shape_name);
+          results.executed++;
+          break;
+        }
+        case 'get_all_slides': {
+          const allSlides = await PowerPointService.getAllSlidesText();
+          results.executed++;
+          results.errors.push(`[All slides]: ${JSON.stringify(allSlides)}`);
+          break;
+        }
         default:
           results.errors.push(`Unknown PPT action: ${cmd.action}`);
       }
@@ -385,6 +404,9 @@ export function useChat(hostApp: OfficeHostType) {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [includeContext, setIncludeContext] = useState(true);
+  // True during the post-LLM finishing phase: command execution + state patch.
+  // Combined with ai.isStreaming, this gives a complete "is busy" signal.
+  const [isFinishing, setIsFinishing] = useState(false);
 
   const ai = useAI();
   const { settings } = useSettings();
@@ -591,29 +613,35 @@ export function useChat(hostApp: OfficeHostType) {
 
       // 5. Stream or fetch, then execute commands + clean the display text.
       const finishAssistant = async (raw: string, thinking: string = '') => {
-        const cmdResult = await executeHostCommands(hostApp, raw);
-        const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-        const displayText = cleanResponseText(stripped);
-        // Surface command execution results so the user knows the AI actually
-        // did something (not just chatted). Show success count AND errors.
-        let commandNote = '';
-        if (cmdResult && cmdResult.executed > 0) {
-          if (cmdResult.errors.length > 0) {
-            commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed. ⚠️ ${cmdResult.errors.length} error(s): ${cmdResult.errors.slice(0, 3).join('; ')}${cmdResult.errors.length > 3 ? '...' : ''}`;
-          } else {
-            commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed successfully.`;
+        setIsFinishing(true);
+        try {
+          const cmdResult = await executeHostCommands(hostApp, raw);
+          const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+          const displayText = cleanResponseText(stripped);
+          // Surface command execution results so the user knows the AI actually
+          // did something (not just chatted). Show success count AND errors.
+          let commandNote = '';
+          if (cmdResult && cmdResult.executed > 0) {
+            if (cmdResult.errors.length > 0) {
+              commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed. ⚠️ ${cmdResult.errors.length} error(s): ${cmdResult.errors.slice(0, 3).join('; ')}${cmdResult.errors.length > 3 ? '...' : ''}`;
+            } else {
+              commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed successfully.`;
+            }
           }
+          const cleanThinking = thinking ? cleanThinkingText(thinking) : '';
+          patchConversation(convId!, c => ({
+            ...c,
+            messages: c.messages.map(m =>
+              m.id === assistantMsgId
+                ? { ...m, content: displayText + commandNote, thinking: cleanThinking || undefined }
+                : m,
+            ),
+          }));
+          flushStorageWrite();
+        } finally {
+          setIsFinishing(false);
+          ai.markProcessingDone();
         }
-        const cleanThinking = thinking ? cleanThinkingText(thinking) : '';
-        patchConversation(convId!, c => ({
-          ...c,
-          messages: c.messages.map(m =>
-            m.id === assistantMsgId
-              ? { ...m, content: displayText + commandNote, thinking: cleanThinking || undefined }
-              : m,
-          ),
-        }));
-        flushStorageWrite();
       };
 
       try {
@@ -679,6 +707,7 @@ export function useChat(hostApp: OfficeHostType) {
         { id: 'system', role: 'system', content: systemPrompt, timestamp: 0 },
         ...llmHistory,
       ];
+      setIsFinishing(true);
       try {
         const full = activeSettings.streamResponses
           ? (await ai.sendMessageStream(aiMessages, { webSearch: webSearchEnabled }, () => {})).text
@@ -708,6 +737,9 @@ export function useChat(hostApp: OfficeHostType) {
           ),
         }));
         flushStorageWrite();
+      } finally {
+        setIsFinishing(false);
+        ai.markProcessingDone();
       }
     }
   }, [hostApp, ai, persistConversations, patchConversation, flushStorageWrite]);
@@ -778,6 +810,10 @@ export function useChat(hostApp: OfficeHostType) {
     // for the user to tell when the LLM is responding vs. done.
     isStreaming: ai.isStreaming,
     cancelStream: ai.cancelStream,
+    // isFinishing = true during post-LLM finishing (command execution + patch)
+    // isBusy = true for the entire response lifecycle (streaming + finishing)
+    isFinishing,
+    isBusy: ai.isStreaming || isFinishing,
   };
 }
 

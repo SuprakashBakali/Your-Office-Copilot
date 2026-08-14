@@ -88,9 +88,11 @@ const useStyles = makeStyles({
 interface MessageBubbleProps {
   message: ChatMessage;
   onRegenerate?: () => void;
+  /** True while this message's response is still being streamed. */
+  isStreaming?: boolean;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message, onRegenerate }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message, onRegenerate, isStreaming }) => {
   const classes = useStyles();
   const isUser = message.role === 'user';
   // Guard against null/undefined content (e.g. from corrupted localStorage
@@ -99,6 +101,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
   const content = message.content || '';
   const isError = content.startsWith('⚠️');
   const isEmpty = !content && !isUser;
+  // Show streaming cursor on the last assistant message while still streaming
+  const showCursor = !isUser && isStreaming && !!content;
 
   return (
     <div className={`${classes.container} ${isUser ? classes.userContainer : classes.assistantContainer}`}>
@@ -128,7 +132,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
           ) : isUser ? (
             <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</div>
           ) : (
-            <MarkdownRenderer content={content} />
+            <>
+              <MarkdownRenderer content={content} />
+              {showCursor && (
+                <span style={{
+                  display: 'inline-block',
+                  width: '2px',
+                  height: '1em',
+                  backgroundColor: tokens.colorBrandBackground,
+                  marginLeft: '2px',
+                  verticalAlign: 'text-bottom',
+                  animation: 'blink-cursor 0.9s step-end infinite',
+                }} aria-hidden="true" />
+              )}
+            </>
           )}
         </div>
         {!isUser && content && (

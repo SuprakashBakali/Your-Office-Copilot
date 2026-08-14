@@ -44,6 +44,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
     messages, sendChatMessage,
     createConversation, includeContext,
     isStreaming, cancelStream,
+    isBusy, isFinishing,
   } = chat;
   // useAI's error state is not exposed through useChat — but ChatInput can
   // show a generic error indicator if the last message starts with ⚠️.
@@ -61,7 +62,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
     if (el && isAtBottomRef.current) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [messages, isStreaming]);
+  }, [messages, isBusy]);
 
   const handleScroll = () => {
     const el = messageListRef.current;
@@ -87,12 +88,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
           />
         ) : (
           messages.filter(m => m.role !== 'system' && m.role !== 'compaction_summary').map(msg => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble key={msg.id} message={msg} isStreaming={isStreaming} />
           ))
         )}
-        {isStreaming && (
+        {isBusy && (
           <div style={{ padding: '8px', display: 'flex', justifyContent: 'flex-start' }}>
-            <LoadingDots label="Generating..." />
+            <LoadingDots label={isFinishing ? 'Applying changes...' : 'Generating...'} />
           </div>
         )}
       </div>
@@ -101,10 +102,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
       <div className={classes.inputArea}>
         <ChatInput
           onSend={handleSend}
-          disabled={isStreaming}
+          disabled={isBusy}
           onCancel={cancelStream}
-          isStreaming={isStreaming}
-          error={hasError && !isStreaming ? 'last message had an error' : undefined}
+          isStreaming={isBusy}
+          error={hasError && !isBusy ? 'last message had an error' : undefined}
         />
       </div>
     </div>

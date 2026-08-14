@@ -133,18 +133,66 @@ export class WordService {
     });
   }
 
-  static async getContextForAI(maxChars: number = 5000): Promise<string> {
+  static async getContextForAI(maxChars: number = 8000): Promise<string> {
     try {
-      const selection = await this.getSelectedText();
-      if (selection.selectedText && selection.selectedText.length > 0) {
-        return `Selected Text:\n${selection.selectedText.substring(0, maxChars)}`;
-      }
-      const fullDoc = await this.getFullDocument();
-      return `Document Text (excerpt):\n${(fullDoc.fullText || "").substring(0, maxChars)}`;
+      return await Word.run(async (context) => {
+        const body = context.document.body;
+        const paragraphs = body.paragraphs;
+        const tables = body.tables;
+        const properties = context.document.properties;
+
+        body.load('text');
+        paragraphs.load(['style', 'text']);
+        tables.load('items');
+        properties.load(['title', 'author', 'wordCount']);
+        await context.sync();
+
+        const parts: string[] = [];
+
+        // Document properties
+        const title = properties.title || 'Untitled';
+        const author = properties.author || 'Unknown';
+        const fullText = body.text || '';
+        const wordCount = fullText.split(/\s+/).filter(w => w.length > 0).length;
+        parts.push(`Document: "${title}" | Author: ${author} | ~${wordCount} words | ${tables.items.length} table(s)`);
+
+        // Heading structure
+        const headings: string[] = [];
+        paragraphs.items.forEach(p => {
+          const s = (p.style || '').toString().toLowerCase();
+          if (s.includes('heading') || s.includes('title')) {
+            const t = (p.text || '').trim();
+            if (t) headings.push(`  [${p.style}] ${t}`);
+          }
+        });
+        if (headings.length > 0) {
+          parts.push(`\nDocument Structure (headings):\n${headings.slice(0, 40).join('\n')}`);
+        }
+
+        // Full text (capped)
+        const excerpt = fullText.substring(0, maxChars);
+        parts.push(`\nFull Document Text${fullText.length > maxChars ? ` (first ${maxChars} chars)` : ''}:\n${excerpt}`);
+        if (fullText.length > maxChars) {
+          parts.push(`\n(Document is ${fullText.length} chars total — ${fullText.length - maxChars} chars not shown)`);
+        }
+
+        return parts.join('\n');
+      });
     } catch (e) {
       return `Unable to read Word context: ${(e as Error).message}`;
     }
   }
+
+  /** Replace the entire document body with new text. */
+  static async replaceEntireBody(newText: string): Promise<void> {
+    return Word.run(async (context) => {
+      const body = context.document.body;
+      body.clear();
+      body.insertParagraph(newText, Word.InsertLocation.start);
+      await context.sync();
+    });
+  }
+
 
   // ── From office-agents: Word eval_js escape hatch ─────────────────────────
   /**
