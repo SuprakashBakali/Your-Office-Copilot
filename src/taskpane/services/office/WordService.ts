@@ -133,7 +133,7 @@ export class WordService {
     });
   }
 
-  static async getContextForAI(maxChars: number = 8000): Promise<string> {
+  static async getContextForAI(): Promise<string> {
     try {
       // Get full document structure + text
       return Word.run(async (context) => {
@@ -173,12 +173,9 @@ export class WordService {
         await context.sync();
 
         if (selection.text && selection.text.trim().length > 0) {
-          res += `Selected Text:\n${selection.text.substring(0, maxChars)}`;
+          res += `Selected Text:\n${selection.text}`;
         } else {
-          res += `Document Text:\n${(body.text || "").substring(0, maxChars)}`;
-          if (body.text && body.text.length > maxChars) {
-            res += `\n...(truncated, showing first ${maxChars} of ${body.text.length} chars)`;
-          }
+          res += `Document Text:\n${body.text || ""}`;
         }
         return res;
       });

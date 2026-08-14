@@ -195,8 +195,6 @@ export interface AppSettings {
 
   // Privacy
   includeContextByDefault: boolean;
-  maxContextCells: number;
-  maxContextCharacters: number;
 
   // Chat
   streamResponses: boolean;

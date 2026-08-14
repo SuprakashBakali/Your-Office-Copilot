@@ -184,32 +184,6 @@ export const SettingsPanel: React.FC = () => {
                 onChange={(_, data) => updateSettings({ includeContextByDefault: data.checked })}
               />
             </div>
-            <div className={classes.field}>
-              <div className={classes.fieldLabel}>
-                <Text>Max Context Cells</Text>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{settings.maxContextCells} cells</Text>
-              </div>
-              <Slider
-                min={50}
-                max={5000}
-                step={50}
-                value={settings.maxContextCells}
-                onChange={(_, data) => updateSettings({ maxContextCells: data.value })}
-              />
-            </div>
-            <div className={classes.field}>
-              <div className={classes.fieldLabel}>
-                <Text>Max Context Characters</Text>
-                <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>{settings.maxContextCharacters.toLocaleString()} chars</Text>
-              </div>
-              <Slider
-                min={1000}
-                max={50000}
-                step={1000}
-                value={settings.maxContextCharacters}
-                onChange={(_, data) => updateSettings({ maxContextCharacters: data.value })}
-              />
-            </div>
           </AccordionPanel>
         </AccordionItem>
       </Accordion>

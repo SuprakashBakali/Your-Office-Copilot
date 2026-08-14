@@ -598,10 +598,9 @@ export class ExcelService {
    */
   private static formatCellValuesForAI(
     values: any[][],
-    maxCells: number,
-  ): { formatted: string; isTruncated: boolean; rowsShown: number; totalRows: number } {
+  ): { formatted: string; totalRows: number } {
     if (!values || !Array.isArray(values) || values.length === 0) {
-      return { formatted: '[]', isTruncated: false, rowsShown: 0, totalRows: 0 };
+      return { formatted: '[]', totalRows: 0 };
     }
 
     // 1. Trim trailing completely empty rows (common when selecting columns like D:D)
@@ -618,25 +617,16 @@ export class ExcelService {
 
     const trimmedRows = lastNonEmptyRow >= 0 ? values.slice(0, lastNonEmptyRow + 1) : [];
     if (trimmedRows.length === 0) {
-      return { formatted: '[]', isTruncated: false, rowsShown: 0, totalRows: values.length };
+      return { formatted: '[]', totalRows: values.length };
     }
 
-    // 2. Cap to maxCells to prevent token overflow / HTTP 413 Payload Too Large
-    const colCount = Math.max(1, trimmedRows[0]?.length || 1);
-    const maxRowsAllowed = Math.max(10, Math.floor(maxCells / colCount));
-    const rowsShown = Math.min(trimmedRows.length, maxRowsAllowed);
-    const isTruncated = trimmedRows.length > maxRowsAllowed;
-
-    const sliced = trimmedRows.slice(0, rowsShown);
     return {
-      formatted: JSON.stringify(sliced),
-      isTruncated,
-      rowsShown,
+      formatted: JSON.stringify(trimmedRows),
       totalRows: trimmedRows.length,
     };
   }
 
-  static async getContextForAI(maxCells: number = 1000): Promise<string> {
+  static async getContextForAI(): Promise<string> {
     try {
       // 1. Get workbook overview — ALL sheets with their dimensions
       const wbInfo = await this.getWorkbookInfo();
@@ -660,14 +650,9 @@ export class ExcelService {
         label = 'Used Range';
       }
 
-      const { formatted, isTruncated, rowsShown, totalRows } = this.formatCellValuesForAI(
-        target.values,
-        maxCells,
-      );
+      const { formatted } = this.formatCellValuesForAI(target.values);
       res += `\n\n${label} on "${target.sheetName}": ${target.address}\nData:\n${formatted}`;
-      if (isTruncated) {
-        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows. Use get_sheet_data to read other sheets.)`;
-      }
+
       return res;
     } catch (e) {
       return `Unable to read Excel context: ${(e as Error).message}`;

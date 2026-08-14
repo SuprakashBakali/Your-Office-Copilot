@@ -63,8 +63,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: "medium",
   compactMode: false,
   includeContextByDefault: true,
-  maxContextCells: 500,
-  maxContextCharacters: 8000,
   streamResponses: true,
   saveConversations: true,
   maxConversationHistory: 50,
