@@ -1,7 +1,7 @@
 {
   "name": "office-ai-copilot",
   "version": "1.1.0",
-  "description": "Professional Your Co-Pilot for Microsoft Office — Excel, Word, PowerPoint. Powered by NVIDIA NIM and multi-provider AI.",
+  "description": "Professional AI-Powered Copilot for Microsoft Excel. Powered by 7 AI providers (NVIDIA NIM, Gemini, Groq, OpenAI, Anthropic, OpenRouter, Ollama) with autonomous spreadsheet manipulation.",
   "author": "Your Co-Pilot",
   "license": "MIT",
   "private": true,

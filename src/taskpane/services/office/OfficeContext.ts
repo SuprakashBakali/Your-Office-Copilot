@@ -36,7 +36,6 @@ export function detectSupportedApis(): SupportedApiInfo {
     excelApi1_12: check('ExcelApi', '1.12'),
     excelApi1_13: check('ExcelApi', '1.13'),
     excelApi1_14: check('ExcelApi', '1.14'),
-    excelApi1_14: check('ExcelApi', '1.14'),
   };
 }
 
