@@ -73,6 +73,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
     sendChatMessage(text, includeContext, webSearchEnabled, attachments);
   }, [sendChatMessage, includeContext, webSearchEnabled]);
 
+  const handleReportBug = React.useCallback(() => {
+    if (chat.activeConversation?.id) {
+      chat.exportConversation(chat.activeConversation.id, 'json');
+    }
+  }, [chat]);
+
   return (
     <div className={classes.container}>
       {/* Messages — Maximum vertical screen space */}
@@ -103,6 +109,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ chat, webSearchEnabled = f
           onSend={handleSend}
           disabled={isStreaming}
           onCancel={cancelStream}
+          onReportBug={handleReportBug}
           isStreaming={isStreaming}
           error={hasError && !isStreaming ? 'last message had an error' : undefined}
         />

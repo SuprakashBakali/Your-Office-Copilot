@@ -336,7 +336,8 @@ export class ExcelService {
   static async addSheet(name: string): Promise<void> {
     return Excel.run(async (context) => {
       const sheets = context.workbook.worksheets;
-      sheets.add(name);
+      const newSheet = sheets.add(name);
+      newSheet.activate();
       await context.sync();
     });
   }

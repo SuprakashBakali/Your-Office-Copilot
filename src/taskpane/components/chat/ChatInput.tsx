@@ -1,6 +1,6 @@
 import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { makeStyles, tokens, Button, Textarea, Tooltip, Text, Spinner } from '@fluentui/react-components';
-import { SendRegular, StopRegular, KeyboardRegular, AttachRegular, DismissRegular } from '@fluentui/react-icons';
+import { SendRegular, StopRegular, KeyboardRegular, AttachRegular, DismissRegular, BugRegular } from '@fluentui/react-icons';
 import { useAppState, useAppDispatch } from '../../store/AppContext';
 
 const useStyles = makeStyles({
@@ -122,15 +122,23 @@ export interface Attachment {
   isImage: boolean;
 }
 
-interface ChatInputProps {
+export interface ChatInputProps {
   onSend: (text: string, attachments?: Attachment[]) => void;
-  disabled?: boolean;
   onCancel?: () => void;
+  onReportBug?: () => void;
   isStreaming?: boolean;
+  disabled?: boolean;
   error?: string | null;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel, isStreaming, error }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({
+  onSend,
+  onCancel,
+  onReportBug,
+  isStreaming,
+  disabled,
+  error,
+}) => {
   const classes = useStyles();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -226,17 +234,32 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled, onCancel
         className={classes.hiddenInput}
       />
       <div className={classes.inputArea}>
-        <Tooltip content="Attach image/PDF/file" relationship="label">
-          <Button
-            className={classes.attachBtn}
-            icon={<AttachRegular />}
-            appearance="subtle"
-            shape="circular"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled}
-            size="medium"
-          />
-        </Tooltip>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {onReportBug && (
+            <Tooltip content="Report Bug / Export Context" relationship="label">
+              <Button
+                className={classes.attachBtn}
+                icon={<BugRegular />}
+                appearance="subtle"
+                shape="circular"
+                onClick={onReportBug}
+                disabled={disabled}
+                size="medium"
+              />
+            </Tooltip>
+          )}
+          <Tooltip content="Attach image/PDF/file" relationship="label">
+            <Button
+              className={classes.attachBtn}
+              icon={<AttachRegular />}
+              appearance="subtle"
+              shape="circular"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled}
+              size="medium"
+            />
+          </Tooltip>
+        </div>
         <Textarea
           ref={textareaRef}
           className={classes.textarea}

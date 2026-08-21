@@ -1,5 +1,4 @@
-fix(ai): add robust JSON parsing fallback for AI commands
+fix(ai): dashboard creation and add bug report button
 
-- useChat: Strip markdown codeblocks (e.g. \`\`\`json) inside <EXCEL_CMD> tags.
-- useChat: Add fallback parser that replaces unescaped newlines and fixes trailing commas before throwing JSON parse errors.
-- prompts: Explicitly instruct models to escape internal double quotes and newlines in string values.
+- ExcelService: `addSheet` now immediately activates the newly created sheet. This fixes a common failure mode where the AI creates a sheet for a dashboard but forgets to pass the `sheet` parameter in subsequent `write_range`/`create_chart` commands, causing them to overwrite the previous active sheet instead.
+- Chat UI: Added a Bug Report button next to the Attachment button in the chat input area. This allows users to easily export the current conversation context as a JSON file to help debug AI behavior.
