@@ -1,0 +1,49 @@
+fix(ai): comprehensive API compatibility fixes across all providers
+
+OpenAICompatibleProvider:
+- o1/o3/o4 reasoning models now use max_completion_tokens (not max_tokens)
+  and suppress temperature (causes 400 on reasoning models)
+- Add supportsStreamOptions flag (default true); providers can opt out
+- Parse structured JSON errors from provider error responses
+- Extract thinking/reasoning_content field in non-stream chat()
+- Guard Authorization header against empty apiKey
+
+AnthropicProvider:
+- Add claude-opus-4-20250514 and claude-3-7-sonnet-20250219 (thinking)
+- Extended thinking: interleaved-thinking-2025-02-19 beta header
+- Full thinking block streaming (content_block_start + thinking_delta)
+- Temperature suppression for thinking-enabled models
+- Structured error parsing
+
+GeminiProvider:
+- CRITICAL: route all calls through /api/proxy (was direct fetch = CORS fail)
+- Add Gemini 2.5 Flash Thinking, 2.0 Flash Lite, 1.5 Flash 8B models
+- thinkingConfig for Gemini 2.5+ (budget_tokens=4096)
+- Handle thought=true parts in both chat() and chatStream()
+- Strip undefined values from generationConfig to avoid 400 errors
+- Structured error parsing
+
+GenericOpenAIProvider:
+- Auto-detect Anthropic API endpoint -> delegate to AnthropicProvider
+- Auto-detect Gemini API endpoint -> delegate to GeminiProvider
+- No more broken chat() responses when user points custom model at these APIs
+
+GroqProvider:
+- supportsStreamOptions=false (Groq rejects stream_options with 400)
+- Add Llama 4 Scout/Maverick, DeepSeek R1 distills, Qwen2.5, Kimi K2
+- Temperature clamped to [0, 2.0] per Groq's limits
+
+NvidiaProvider:
+- supportsStreamOptions=false (NIM rejects it)
+- Add Llama 4 Scout/Maverick, Nemotron Ultra 253B, Phi-4, Gemma 3
+
+OpenAIProvider:
+- Add GPT-4.1/4.1-mini/4.1-nano, o4-mini, o3/o3-mini, o1/o1-mini
+
+OpenRouterProvider:
+- Updated comprehensive 2025 model list: Llama 4, Claude 4, Gemini 2.5,
+  GPT-4.1, o4-mini/o3, DeepSeek R1/V3, Mistral, Qwen3, Kimi K2, Phi-4
+
+useAI:
+- resolveProvider: fresh provider instance for custom Anthropic/Gemini models
+  (no baseUrl) instead of mutating shared singletons

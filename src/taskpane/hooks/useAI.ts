@@ -21,17 +21,33 @@ export function useAI() {
     const apiKey = activeCustomModel?.apiKey || settings.apiKeys[providerType] || '';
     const modelId = activeCustomModel?.modelId ?? settings.activeModel;
 
-    const provider = activeCustomModel?.baseUrl
-      ? new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey)
-      : getProvider(activeCustomModel?.provider ?? settings.activeProvider);
+    let provider;
+    if (activeCustomModel?.baseUrl) {
+      // User specified a custom baseUrl — use the smart GenericOpenAIProvider
+      // (it auto-detects Anthropic/Gemini native APIs and routes correctly)
+      provider = new GenericOpenAIProvider(activeCustomModel.baseUrl, apiKey);
+    } else if (activeCustomModel) {
+      // Custom model without a baseUrl — use a fresh instance of the native
+      // provider so we don't mutate the shared singleton in ProviderFactory.
+      // Mutating singletons causes concurrent requests to cross-contaminate keys.
+      const p = getProvider(providerType);
+      const freshProvider = Object.create(Object.getPrototypeOf(p)) as typeof p;
+      Object.assign(freshProvider, p);
+      freshProvider.setApiKey(apiKey);
+      provider = freshProvider;
+    } else {
+      // Built-in provider via settings — use singleton (only one request at a time)
+      provider = getProvider(providerType);
+      if (apiKey) provider.setApiKey(apiKey);
+    }
 
     if (provider.requiresKey() && !apiKey) {
       throw new Error(`No API key — add one in Settings → My Models.`);
     }
-    if (apiKey && !activeCustomModel?.baseUrl) provider.setApiKey(apiKey);
 
     return { provider, modelId };
   }, [settings]);
+
 
   const buildRequestOptions = useCallback(
     (messages: ChatMessage[], options: any, stream: boolean, signal?: AbortSignal): AIRequestOptions => {

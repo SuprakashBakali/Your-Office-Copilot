@@ -11,7 +11,7 @@ import {
 import { useSettings } from '../../hooks/useSettings';
 import { AIProviderType, CustomModel } from '../../types';
 import { GenericOpenAIProvider } from '../../services/ai/GenericOpenAIProvider';
-import { getProvider } from '../../services/ai/ProviderFactory';
+
 
 const useStyles = makeStyles({
   root: {
@@ -115,16 +115,29 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle');
   const [testError, setTestError] = useState('');
 
-  const update = (patch: Partial<CustomModel>) => onUpdate({ ...model, ...patch });
+  const [localName, setLocalName] = useState(model.name);
+  const [localModelId, setLocalModelId] = useState(model.modelId);
+  const [localBaseUrl, setLocalBaseUrl] = useState(model.baseUrl || '');
+  const [localApiKey, setLocalApiKey] = useState(model.apiKey);
+
+  React.useEffect(() => { setLocalName(model.name); }, [model.name]);
+  React.useEffect(() => { setLocalModelId(model.modelId); }, [model.modelId]);
+  React.useEffect(() => { setLocalBaseUrl(model.baseUrl || ''); }, [model.baseUrl]);
+  React.useEffect(() => { setLocalApiKey(model.apiKey); }, [model.apiKey]);
+
+  const flush = (patch: Partial<CustomModel>) => onUpdate({ ...model, ...patch });
 
   const handleTest = async () => {
-    if (!model.apiKey || !model.modelId || !model.baseUrl) return;
+    const apiKey = localApiKey;
+    const modelId = localModelId;
+    const baseUrl = localBaseUrl;
+    if (!apiKey || !modelId || !baseUrl) return;
     setTestStatus('testing');
     setTestError('');
     try {
-      const provider = new GenericOpenAIProvider(model.baseUrl, model.apiKey);
+      const provider = new GenericOpenAIProvider(baseUrl, apiKey);
       const response = await provider.chat({
-        model: model.modelId,
+        model: modelId,
         messages: [{ role: 'user', content: 'Hi' }],
         maxTokens: 5,
         stream: false,
@@ -136,11 +149,8 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
     }
   };
 
-  const _providerColor = PROVIDERS.find(p => p.id === model.provider)?.color || '#888';
-
   return (
     <div className={`${classes.card} ${isActive ? classes.activeCard : ''}`}>
-      {/* Active selector + delete */}
       <div className={classes.row}>
         <Tooltip content={isActive ? 'Active model' : 'Set as active'} relationship="label">
           <Button
@@ -152,10 +162,11 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         </Tooltip>
         <Input
           className={classes.flex1}
-          value={model.name}
+          value={localName}
           placeholder="Model display name"
           size="small"
-          onChange={(_, d) => update({ name: d.value })}
+          onChange={(_, d) => setLocalName(d.value)}
+          onBlur={() => flush({ name: localName })}
         />
         {isActive && <Badge appearance="filled" color="brand" size="small">Active</Badge>}
         <Button
@@ -167,17 +178,17 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         />
       </div>
 
-      {/* Provider */}
       <div className={classes.row}>
         <Text className={classes.label}>Provider</Text>
         <Dropdown
           value={PROVIDERS.find(p => p.id === model.provider)?.label || model.provider}
           onOptionSelect={(_, d) => {
             const chosen = PROVIDERS.find(p => p.id === d.optionValue);
-            update({
+            const newBaseUrl = localBaseUrl || chosen?.baseUrl || '';
+            setLocalBaseUrl(newBaseUrl);
+            flush({
               provider: d.optionValue as AIProviderType,
-              // Auto-fill base URL when provider changes
-              baseUrl: model.baseUrl || chosen?.baseUrl || '',
+              baseUrl: newBaseUrl,
             });
           }}
           size="small"
@@ -194,41 +205,41 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         </Dropdown>
       </div>
 
-      {/* Model ID */}
       <div className={classes.row}>
         <Text className={classes.label}>Model ID</Text>
         <Input
           className={classes.flex1}
-          value={model.modelId}
+          value={localModelId}
           placeholder="e.g. meta/llama-3.1-70b-instruct"
           size="small"
-          onChange={(_, d) => update({ modelId: d.value })}
+          onChange={(_, d) => setLocalModelId(d.value)}
+          onBlur={() => flush({ modelId: localModelId })}
         />
       </div>
 
-      {/* Base URL */}
       <div className={classes.row}>
         <Text className={classes.label}>Base URL</Text>
         <Input
           className={classes.flex1}
-          value={model.baseUrl || ''}
+          value={localBaseUrl}
           placeholder={PROVIDERS.find(p => p.id === model.provider)?.baseUrl || 'https://...'}
           size="small"
-          onChange={(_, d) => update({ baseUrl: d.value })}
+          onChange={(_, d) => setLocalBaseUrl(d.value)}
+          onBlur={() => flush({ baseUrl: localBaseUrl })}
         />
       </div>
 
-      {/* API Key */}
       {model.provider !== 'ollama' && (
         <div className={classes.row}>
           <Text className={classes.label}>API Key</Text>
           <Input
             className={classes.flex1}
             type={showKey ? 'text' : 'password'}
-            value={model.apiKey}
+            value={localApiKey}
             placeholder="Paste API key here"
             size="small"
-            onChange={(_, d) => { update({ apiKey: d.value }); setTestStatus('idle'); }}
+            onChange={(_, d) => { setLocalApiKey(d.value); setTestStatus('idle'); }}
+            onBlur={() => flush({ apiKey: localApiKey })}
             contentAfter={
               <Button
                 appearance="transparent"
@@ -242,7 +253,7 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
             size="small"
             appearance="outline"
             onClick={handleTest}
-            disabled={testStatus === 'testing' || !model.apiKey || !model.modelId || !model.baseUrl}
+            disabled={testStatus === 'testing' || !localApiKey || !localModelId || !localBaseUrl}
             icon={testStatus === 'testing' ? <Spinner size="extra-tiny" /> : undefined}
           >
             {testStatus === 'testing' ? '' : 'Test'}
@@ -250,7 +261,6 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         </div>
       )}
 
-      {/* Test status */}
       {testStatus === 'ok' && (
         <div className={`${classes.status} ${classes.success}`}>
           <CheckmarkCircleRegular /> Connected successfully
@@ -329,6 +339,10 @@ export const CustomModelManager: React.FC = () => {
       }
       const start = performance.now();
       try {
+        // Always create a fresh provider instance per model.
+        // Never call setApiKey on the shared singleton from ProviderFactory —
+        // concurrent Promise.allSettled calls would mutate the same object and
+        // cross-contaminate each other's keys.
         if (model.provider === 'anthropic' && !model.baseUrl) {
           const { AnthropicProvider } = await import('../../services/ai/AnthropicProvider');
           const p = new AnthropicProvider();
@@ -340,8 +354,17 @@ export const CustomModelManager: React.FC = () => {
           p.setApiKey(model.apiKey);
           await p.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
         } else {
-          const provider = model.baseUrl ? new GenericOpenAIProvider(model.baseUrl, model.apiKey) : getProvider(model.provider);
-          if (!model.baseUrl) provider.setApiKey(model.apiKey);
+          // All other providers (including Groq, OpenRouter, NVIDIA, OpenAI, Ollama,
+          // and any custom baseUrl) go through GenericOpenAIProvider which is
+          // OpenAI-compatible and instantiated fresh each time.
+          const baseUrl = model.baseUrl || (() => {
+            // Derive default baseUrl from the provider type
+            return PROVIDERS.find(p => p.id === model.provider)?.baseUrl || '';
+          })();
+          if (!baseUrl) {
+            throw new Error(`No baseUrl for provider ${model.provider}`);
+          }
+          const provider = new GenericOpenAIProvider(baseUrl, model.apiKey);
           await provider.chat({ model: model.modelId, messages: [{ role: 'user', content: 'Hi' }], maxTokens: 5, stream: false });
         }
         const end = performance.now();
@@ -358,6 +381,7 @@ export const CustomModelManager: React.FC = () => {
     setTestRankings(rankings.sort((a, b) => a.latency - b.latency));
     setIsTestingAll(false);
   };
+
 
   return (
     <div className={classes.root}>
