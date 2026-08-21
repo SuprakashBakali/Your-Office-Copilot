@@ -147,8 +147,17 @@ export class ExcelService {
       const worksheet = sheetName
         ? context.workbook.worksheets.getItem(sheetName)
         : context.workbook.worksheets.getActiveWorksheet();
-      const range = worksheet.getRange(address);
-      range.values = values;
+      
+      const rowCount = values.length;
+      const colCount = rowCount > 0 ? values[0].length : 0;
+      
+      if (rowCount > 0 && colCount > 0) {
+        // Start from the top-left cell of the provided address and resize to fit the data exactly
+        const startCell = worksheet.getRange(address).getCell(0, 0);
+        const targetRange = startCell.getResizedRange(rowCount - 1, colCount - 1);
+        targetRange.values = values;
+      }
+      
       await context.sync();
     });
   }

@@ -1,3 +1,4 @@
-fix(ai): add NVIDIA NIM endpoint auto-detection to generic provider
+fix(ai): dynamically resize write_range target to match data dimensions
 
-- GenericOpenAIProvider: Detect `integrate.api.nvidia.com` in custom base URLs and delegate to NvidiaProvider. This ensures that NVIDIA-specific constraints (like `supportsStreamOptions = false`) are automatically applied even when users set up a custom model pointing to the NIM API.
+- ExcelService: Updated `writeToRange` to calculate the dimensions of the incoming `values` array and dynamically resize the target range (using `getResizedRange`).
+- This fixes a highly common failure mode where AI models guess an arbitrary target range size (e.g. `A1:D100`) that doesn't exactly match the 2D array size they output, previously resulting in the error: "The number of rows or columns in the input array doesn't match the size or dimensions of the range."
