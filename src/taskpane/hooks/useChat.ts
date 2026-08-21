@@ -497,9 +497,19 @@ export function useChat(hostApp: OfficeHostType) {
       }
       // Slice to LLM-visible context (everything from last compaction onward).
       const llmVisible = sliceContextForLLM(historyMessages);
+      const llmVisibleMapped = llmVisible.map(m => {
+        if (m.commandOutputs && m.commandOutputs.length > 0) {
+          return {
+            ...m,
+            content: m.content + `\n\n[DATA RETURNED FROM COMMANDS]:\n${m.commandOutputs.join('\n\n')}`
+          };
+        }
+        return m;
+      });
+      
       const aiMessages: ChatMessage[] = [
         { id: 'system', role: 'system', content: systemPrompt, timestamp: 0 },
-        ...llmVisible,
+        ...llmVisibleMapped,
       ];
 
       // If the user attached images, inject them as multimodal content on
@@ -541,18 +551,18 @@ export function useChat(hostApp: OfficeHostType) {
           }
         }
         
-        // Also attach the raw text to the message so the AI can see the actual JSON outputs
-        let finalContent = displayText + commandNote;
-        if (cmdResult && cmdResult.outputs.length > 0) {
-           finalContent += `\n\n[DATA RETURNED FROM COMMANDS]:\n${cmdResult.outputs.join('\n\n')}`;
-        }
-        
+        // Attach outputs to the message object (hidden from UI) instead of `content`
         const cleanThinking = thinking ? cleanThinkingText(thinking) : '';
         patchConversation(convId!, c => ({
           ...c,
           messages: c.messages.map(m =>
             m.id === assistantMsgId
-              ? { ...m, content: finalContent, thinking: cleanThinking || undefined }
+              ? { 
+                  ...m, 
+                  content: displayText + commandNote, 
+                  thinking: cleanThinking || undefined,
+                  commandOutputs: cmdResult && cmdResult.outputs.length > 0 ? cmdResult.outputs : undefined
+                }
               : m,
           ),
         }));

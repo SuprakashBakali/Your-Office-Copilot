@@ -57,6 +57,8 @@ export interface ChatMessage {
   tokens?: number;
   /** If the AI returned a reasoning/thinking trace (Claude, o1, DeepSeek-R1) */
   thinking?: string;
+  /** Hidden raw data output from Excel commands (sent to LLM context, but hidden from UI) */
+  commandOutputs?: string[];
   /** Whether this message has been hidden from the LLM context by compaction */
   compacted?: boolean;
 }
