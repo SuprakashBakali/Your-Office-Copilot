@@ -38,6 +38,11 @@ export class GenericOpenAIProvider extends OpenAICompatibleProvider {
     return this._baseUrl.includes('generativelanguage.googleapis.com');
   }
 
+  /** Detect whether this endpoint is the native NVIDIA NIM API. */
+  private isNvidia(): boolean {
+    return this._baseUrl.includes('integrate.api.nvidia.com');
+  }
+
   /** Lazily instantiate the native Anthropic provider with our key. */
   private async getAnthropicProvider() {
     const { AnthropicProvider } = await import('./AnthropicProvider');
@@ -50,6 +55,14 @@ export class GenericOpenAIProvider extends OpenAICompatibleProvider {
   private async getGeminiProvider() {
     const { GeminiProvider } = await import('./GeminiProvider');
     const p = new GeminiProvider();
+    p.setApiKey(this.apiKey);
+    return p;
+  }
+
+  /** Lazily instantiate the native NVIDIA provider with our key. */
+  private async getNvidiaProvider() {
+    const { NvidiaProvider } = await import('./NvidiaProvider');
+    const p = new NvidiaProvider();
     p.setApiKey(this.apiKey);
     return p;
   }
@@ -85,6 +98,10 @@ export class GenericOpenAIProvider extends OpenAICompatibleProvider {
       const p = await this.getGeminiProvider();
       return p.chat(options);
     }
+    if (this.isNvidia()) {
+      const p = await this.getNvidiaProvider();
+      return p.chat(options);
+    }
     return super.chat(options);
   }
 
@@ -96,6 +113,11 @@ export class GenericOpenAIProvider extends OpenAICompatibleProvider {
     }
     if (this.isGemini()) {
       const p = await this.getGeminiProvider();
+      yield* p.chatStream(options);
+      return;
+    }
+    if (this.isNvidia()) {
+      const p = await this.getNvidiaProvider();
       yield* p.chatStream(options);
       return;
     }

@@ -1,4 +1,3 @@
-fix(ai): dashboard creation and add bug report button
+fix(ai): add NVIDIA NIM endpoint auto-detection to generic provider
 
-- ExcelService: `addSheet` now immediately activates the newly created sheet. This fixes a common failure mode where the AI creates a sheet for a dashboard but forgets to pass the `sheet` parameter in subsequent `write_range`/`create_chart` commands, causing them to overwrite the previous active sheet instead.
-- Chat UI: Added a Bug Report button next to the Attachment button in the chat input area. This allows users to easily export the current conversation context as a JSON file to help debug AI behavior.
+- GenericOpenAIProvider: Detect `integrate.api.nvidia.com` in custom base URLs and delegate to NvidiaProvider. This ensures that NVIDIA-specific constraints (like `supportsStreamOptions = false`) are automatically applied even when users set up a custom model pointing to the NIM API.
