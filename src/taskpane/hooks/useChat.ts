@@ -16,7 +16,28 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
   let match;
   while ((match = cmdRegex.exec(text)) !== null) {
     try {
-      const cmd = JSON.parse(match[1].trim());
+      let rawJson = match[1].trim();
+      // LLMs frequently wrap JSON in markdown blocks even when instructed not to.
+      // Strip ```json and ``` if they are present inside the EXCEL_CMD tags.
+      rawJson = rawJson.replace(/^```(?:json|javascript|js)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      
+      let cmd;
+      try {
+        cmd = JSON.parse(rawJson);
+      } catch (firstErr) {
+        // Fallback: try to fix common LLM JSON formatting errors
+        try {
+          // 1. Replace literal unescaped newlines with escaped newlines
+          // (LLMs often output multi-line string values directly)
+          let fixedJson = rawJson.replace(/\n/g, '\\n').replace(/\r/g, '');
+          // 2. Fix trailing commas before closing braces/brackets
+          fixedJson = fixedJson.replace(/,\s*([\]}])/g, '$1');
+          cmd = JSON.parse(fixedJson);
+        } catch (secondErr) {
+          // If fallback also fails, throw the original error so the user sees it
+          throw firstErr;
+        }
+      }
       switch (cmd.action) {
         case 'write_cell':
           await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);

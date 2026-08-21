@@ -76,6 +76,7 @@ Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to write, modify, format, or analyze data in the spreadsheet.
 - You can emit multiple EXCEL_CMD blocks in one response to chain operations (e.g., get_sheet_data → add_sheet → write_range → create_chart → format_range).
 - Use valid JSON inside the block. Do NOT use markdown code blocks (\\\`\\\`\\\`) inside the EXCEL_CMD block.
+- You MUST escape any double quotes or newlines inside string values (e.g. \"value\": \"She said \\\"Hello\\\"\\nNext line\").
 - Be precise with cell references and ranges.
 - If you don't know the exact range, use get_sheet_data to read the sheet first.
 - After writing large data ranges, emit autofit_columns to make the data readable.
