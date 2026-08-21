@@ -21,6 +21,13 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
       // Strip ```json and ``` if they are present inside the EXCEL_CMD tags.
       rawJson = rawJson.replace(/^```(?:json|javascript|js)?\s*/i, '').replace(/\s*```$/i, '').trim();
       
+      // Some LLMs include explanatory text inside the tag (e.g. {"action": "..."} // comments).
+      // Extract just the outermost JSON object or array.
+      const jsonMatch = rawJson.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (jsonMatch) {
+        rawJson = jsonMatch[0];
+      }
+      
       let cmd;
       try {
         cmd = JSON.parse(rawJson);
@@ -39,20 +46,24 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
         }
       }
       switch (cmd.action) {
+        case 'activate_sheet':
+          await ExcelService.activateSheet(cmd.name);
+          results.executed++;
+          break;
         case 'write_cell':
-          await ExcelService.writeToRange(cmd.cell, [[cmd.value]]);
+          await ExcelService.writeToRange(cmd.cell, [[cmd.value]], cmd.sheet);
           results.executed++;
           break;
         case 'write_formula':
-          await ExcelService.insertFormula(cmd.cell, cmd.formula);
+          await ExcelService.insertFormula(cmd.cell, cmd.formula, cmd.sheet);
           results.executed++;
           break;
         case 'write_range':
-          await ExcelService.writeToRange(cmd.range, cmd.values);
+          await ExcelService.writeToRange(cmd.range, cmd.values, cmd.sheet);
           results.executed++;
           break;
         case 'create_chart':
-          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title);
+          await ExcelService.createChart(cmd.chart_type, cmd.data_range, cmd.title, cmd.sheet);
           results.executed++;
           break;
         case 'delete_chart':
@@ -64,11 +75,11 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           results.executed++;
           break;
         case 'clear_range':
-          await ExcelService.clearRange(cmd.range);
+          await ExcelService.clearRange(cmd.range, cmd.sheet);
           results.executed++;
           break;
         case 'format_range':
-          await ExcelService.formatRange(cmd.range, cmd.options);
+          await ExcelService.formatRange(cmd.range, cmd.options, cmd.sheet);
           results.executed++;
           break;
         case 'add_sheet':

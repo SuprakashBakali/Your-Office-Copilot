@@ -267,11 +267,13 @@ export class ExcelService {
       wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General";
       verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string
       sheet?: string
-    }
+    },
+    sheetName?: string
   ): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = opts.sheet
-        ? context.workbook.worksheets.getItem(opts.sheet)
+      const targetSheet = sheetName || opts.sheet;
+      const worksheet = targetSheet
+        ? context.workbook.worksheets.getItem(targetSheet)
         : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       if (opts.bold !== undefined) range.format.font.bold = opts.bold;
