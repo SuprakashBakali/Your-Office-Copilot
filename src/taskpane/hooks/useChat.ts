@@ -171,9 +171,15 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           break;
         }
         case 'get_range_csv': {
-          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows);
+          const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows, cmd.sheet);
           results.executed++;
           results.errors.push(`[CSV data]:\n${csv}`);
+          break;
+        }
+        case 'get_sheet_data': {
+          const sheetData = await ExcelService.getSheetData(cmd.sheet);
+          results.executed++;
+          results.errors.push(`[sheet data]: Sheet "${cmd.sheet}" (${sheetData.rowCount} rows × ${sheetData.columnCount} cols, range: ${sheetData.address}):\n${JSON.stringify(sheetData.values?.slice(0, 100))}`);
           break;
         }
         case 'freeze_panes':

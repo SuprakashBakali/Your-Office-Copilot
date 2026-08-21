@@ -56,46 +56,68 @@ export class ExcelService {
       const worksheets = workbook.worksheets;
       const activeWorksheet = worksheets.getActiveWorksheet();
       const namedItems = workbook.names;
-      
+
       workbook.load("name");
       worksheets.load("items/name, items/visibility");
       activeWorksheet.load("name");
       namedItems.load("items/name");
-      
+
       await context.sync();
-      
-      const sheetInfos: SheetInfo[] = [];
+
+      // Queue ALL usedRange.load() calls BEFORE syncing — batches into
+      // ONE sync instead of N syncs (one per sheet). On a 20-sheet workbook
+      // this cuts ~20 round-trips down to 2.
+      const sheetUsedRanges: { sheet: any; usedRange: any }[] = [];
       for (const sheet of worksheets.items) {
-        let rowCount = 0;
-        let columnCount = 0;
-        let usedRangeAddress = "";
-        
         try {
           const usedRange = sheet.getUsedRange();
           usedRange.load(["rowCount", "columnCount", "address"]);
-          await context.sync();
-          rowCount = usedRange.rowCount;
-          columnCount = usedRange.columnCount;
-          usedRangeAddress = usedRange.address;
-        } catch (e) {
-          // Empty sheet or error
+          sheetUsedRanges.push({ sheet, usedRange });
+        } catch {
+          // Empty sheet
         }
-        
-        sheetInfos.push({
+      }
+      if (sheetUsedRanges.length > 0) {
+        await context.sync();
+      }
+
+      const sheetInfos: SheetInfo[] = worksheets.items.map(sheet => {
+        const entry = sheetUsedRanges.find(e => e.sheet === sheet);
+        let rowCount = 0;
+        let columnCount = 0;
+        let usedRangeAddress = "";
+        if (entry) {
+          try {
+            rowCount = entry.usedRange.rowCount;
+            columnCount = entry.usedRange.columnCount;
+            usedRangeAddress = entry.usedRange.address;
+          } catch { /* empty */ }
+        }
+        return {
           name: sheet.name,
           isVisible: sheet.visibility === Excel.SheetVisibility.visible,
           rowCount,
           columnCount,
-          usedRangeAddress
-        });
-      }
-      
+          usedRangeAddress,
+        };
+      });
+
       return {
         name: workbook.name || 'Workbook',
         sheets: sheetInfos,
         activeSheet: activeWorksheet.name,
-        namedRanges: namedItems.items.map(item => item.name)
+        namedRanges: namedItems.items.map(item => item.name),
       };
+    });
+  }
+
+  /** Activate a worksheet by name — subsequent commands that default to
+   *  the active sheet will target this sheet. */
+  static async activateSheet(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const sheet = context.workbook.worksheets.getItem(name);
+      sheet.activate();
+      await context.sync();
     });
   }
 
@@ -119,37 +141,23 @@ export class ExcelService {
     });
   }
 
-  static async getNamedRanges(): Promise<string[]> {
-    return Excel.run(async (context) => {
-      const namedItems = context.workbook.names;
-      namedItems.load("items/name");
-      await context.sync();
-      return namedItems.items.map(item => item.name);
-    });
-  }
 
-  static async getCellFormulas(address: string): Promise<string[][]> {
+  static async writeToRange(address: string, values: any[][], sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
-      const range = worksheet.getRange(address);
-      range.load("formulas");
-      await context.sync();
-      return range.formulas;
-    });
-  }
-
-  static async writeToRange(address: string, values: any[][]): Promise<void> {
-    return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.values = values;
       await context.sync();
     });
   }
 
-  static async insertFormula(address: string, formula: string): Promise<void> {
+  static async insertFormula(address: string, formula: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.formulas = [[formula]];
       await context.sync();
@@ -192,16 +200,13 @@ export class ExcelService {
     });
   }
 
-  static async createNamedRange(name: string, address: string): Promise<void> {
-    return Excel.run(async (context) => {
-      context.workbook.names.add(name, address);
-      await context.sync();
-    });
-  }
 
-  static async createChart(type: string, dataRange: string, title: string): Promise<void> {
+
+  static async createChart(type: string, dataRange: string, title: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(dataRange);
       let chartType = Excel.ChartType.columnClustered;
       const t = type.toLowerCase();
@@ -235,9 +240,11 @@ export class ExcelService {
     });
   }
 
-  static async clearRange(address: string): Promise<void> {
+  static async clearRange(address: string, sheetName?: string): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       range.clear();
       await context.sync();
@@ -246,14 +253,17 @@ export class ExcelService {
 
   static async formatRange(
     address: string,
-    opts: { 
+    opts: {
       bold?: boolean; italic?: boolean; backgroundColor?: string; fontColor?: string; fontSize?: number;
-      wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General"; 
-      verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string 
+      wrapText?: boolean; horizontalAlignment?: "Center" | "Left" | "Right" | "Justify" | "General";
+      verticalAlignment?: "Center" | "Top" | "Bottom" | "Justify"; numberFormat?: string
+      sheet?: string
     }
   ): Promise<void> {
     return Excel.run(async (context) => {
-      const worksheet = context.workbook.worksheets.getActiveWorksheet();
+      const worksheet = opts.sheet
+        ? context.workbook.worksheets.getItem(opts.sheet)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = worksheet.getRange(address);
       if (opts.bold !== undefined) range.format.font.bold = opts.bold;
       if (opts.italic !== undefined) range.format.font.italic = opts.italic;
@@ -598,12 +608,12 @@ export class ExcelService {
    */
   private static formatCellValuesForAI(
     values: any[][],
-  ): { formatted: string; totalRows: number } {
+    maxCells: number = 1000,
+  ): { formatted: string; isTruncated: boolean; rowsShown: number; totalRows: number } {
     if (!values || !Array.isArray(values) || values.length === 0) {
-      return { formatted: '[]', totalRows: 0 };
+      return { formatted: '[]', isTruncated: false, rowsShown: 0, totalRows: 0 };
     }
 
-    // 1. Trim trailing completely empty rows (common when selecting columns like D:D)
     let lastNonEmptyRow = values.length - 1;
     while (lastNonEmptyRow >= 0) {
       const row = values[lastNonEmptyRow];
@@ -617,16 +627,23 @@ export class ExcelService {
 
     const trimmedRows = lastNonEmptyRow >= 0 ? values.slice(0, lastNonEmptyRow + 1) : [];
     if (trimmedRows.length === 0) {
-      return { formatted: '[]', totalRows: values.length };
+      return { formatted: '[]', isTruncated: false, rowsShown: 0, totalRows: values.length };
     }
 
+    const colCount = Math.max(1, trimmedRows[0]?.length || 1);
+    const maxRowsAllowed = Math.max(10, Math.floor(maxCells / colCount));
+    const rowsShown = Math.min(trimmedRows.length, maxRowsAllowed);
+    const isTruncated = trimmedRows.length > maxRowsAllowed;
+
     return {
-      formatted: JSON.stringify(trimmedRows),
+      formatted: JSON.stringify(trimmedRows.slice(0, rowsShown)),
+      isTruncated,
+      rowsShown,
       totalRows: trimmedRows.length,
     };
   }
 
-  static async getContextForAI(): Promise<string> {
+  static async getContextForAI(maxCells: number = 1000): Promise<string> {
     try {
       // 1. Get workbook overview — ALL sheets with their dimensions
       const wbInfo = await this.getWorkbookInfo();
@@ -650,8 +667,14 @@ export class ExcelService {
         label = 'Used Range';
       }
 
-      const { formatted } = this.formatCellValuesForAI(target.values);
+      const { formatted, isTruncated, rowsShown, totalRows } = this.formatCellValuesForAI(
+        target.values,
+        maxCells,
+      );
       res += `\n\n${label} on "${target.sheetName}": ${target.address}\nData:\n${formatted}`;
+      if (isTruncated) {
+        res += `\n(Note: showing first ${rowsShown} of ${totalRows} non-empty rows. Use get_sheet_data to read other sheets.)`;
+      }
 
       return res;
     } catch (e) {
@@ -889,9 +912,11 @@ export class ExcelService {
 
   // ── From office-agents: get_range_as_csv (token-efficient read) ──────────
   /** Read a range as CSV text — much more token-efficient than JSON for large data. */
-  static async getRangeAsCsv(address: string, maxRows: number = 500): Promise<string> {
+  static async getRangeAsCsv(address: string, maxRows: number = 500, sheetName?: string): Promise<string> {
     return Excel.run(async (context) => {
-      const ws = context.workbook.worksheets.getActiveWorksheet();
+      const ws = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
       const range = ws.getRange(address);
       range.load(['values', 'rowCount']);
       await context.sync();

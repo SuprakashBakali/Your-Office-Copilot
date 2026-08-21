@@ -11,16 +11,26 @@ const EXCEL_COMMAND_DOCS = `
 You can directly modify the user's Excel spreadsheet by emitting EXCEL_CMD blocks in your response.
 When the user asks you to write, modify, format, or analyze data in the spreadsheet, ALWAYS emit an EXCEL_CMD block to do it automatically.
 
+WORKBOOK AWARENESS:
+- The context provided above lists ALL sheets in the workbook with their dimensions.
+- You can read data from ANY sheet using get_sheet_data or get_range_csv with a "sheet" parameter.
+- You can write to ANY sheet by including a "sheet" parameter in write_cell, write_range, write_formula, create_chart, format_range, clear_range.
+- To build a dashboard on a new sheet: (1) add_sheet, (2) read source data with get_sheet_data, (3) write to the new sheet using "sheet" parameter, (4) create charts on the new sheet.
+- Use activate_sheet to switch the active sheet if needed.
+
 Available actions:
-- Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World"}</EXCEL_CMD>
-- Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)"}</EXCEL_CMD>
-- Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]]}</EXCEL_CMD>
-- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B10","title":"My Chart"}</EXCEL_CMD>
+- Write a value:   <EXCEL_CMD>{"action":"write_cell","cell":"G4","value":"Hello World","sheet":"Sheet1"}</EXCEL_CMD> (sheet is optional, defaults to active sheet)
+- Write a formula: <EXCEL_CMD>{"action":"write_formula","cell":"A1","formula":"=SUM(B1:B10)","sheet":"Dashboard"}</EXCEL_CMD>
+- Write a range:   <EXCEL_CMD>{"action":"write_range","range":"A1:C3","values":[[1,2,3],[4,5,6],[7,8,9]],"sheet":"Dashboard"}</EXCEL_CMD>
+- Read sheet data: <EXCEL_CMD>{"action":"get_sheet_data","sheet":"Sheet1"}</EXCEL_CMD> (returns all data from the named sheet)
+- Get CSV:         <EXCEL_CMD>{"action":"get_range_csv","range":"A1:F100","max_rows":200,"sheet":"Sheet1"}</EXCEL_CMD> (token-efficient read from any sheet)
+- Activate Sheet:  <EXCEL_CMD>{"action":"activate_sheet","name":"Dashboard"}</EXCEL_CMD>
+- Create a chart:  <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B10","title":"My Chart","sheet":"Dashboard"}</EXCEL_CMD>
     - Supported chart types: "column", "pie", "line", "bar", "area", "scatter"
 - Delete Chart:    <EXCEL_CMD>{"action":"delete_chart","chart_name":"Chart1"}</EXCEL_CMD> (use "all" for chart_name to delete all charts on sheet)
 - Create a PivotTable: <EXCEL_CMD>{"action":"create_pivot_table","source_range":"A1:D100","target_cell":"F1","row_field":"Category","value_field":"Sales","pivot_name":"SalesSummary"}</EXCEL_CMD>
-- Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100"}</EXCEL_CMD>
-- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"}}</EXCEL_CMD>
+- Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100","sheet":"Dashboard"}</EXCEL_CMD>
+- Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"},"sheet":"Dashboard"}</EXCEL_CMD>
 - Add Sheet:       <EXCEL_CMD>{"action":"add_sheet","name":"NewData"}</EXCEL_CMD>
 - Delete Sheet:    <EXCEL_CMD>{"action":"delete_sheet","name":"OldData"}</EXCEL_CMD>
 - Insert Range:    <EXCEL_CMD>{"action":"insert_range","range":"A1:A10","shift_direction":"Down"}</EXCEL_CMD>
@@ -51,16 +61,23 @@ Available actions:
 - Delete Named:    <EXCEL_CMD>{"action":"delete_named_range","name":"Revenue"}</EXCEL_CMD>
 - Search Data:     <EXCEL_CMD>{"action":"search_data","search_term":"Q4","match_case":false,"use_regex":false,"max_results":50}</EXCEL_CMD>
 - Get Objects:     <EXCEL_CMD>{"action":"get_all_objects"}</EXCEL_CMD> (lists all charts, pivot tables, tables)
-- Get CSV:         <EXCEL_CMD>{"action":"get_range_csv","range":"A1:F100","max_rows":200}</EXCEL_CMD> (token-efficient data read)
 - Eval JS:         <EXCEL_CMD>{"action":"eval_js","code":"const ws = context.workbook.worksheets.getActiveWorksheet(); const range = ws.getRange('A1'); range.values = [['Hello']]; await context.sync();"}</EXCEL_CMD>
     ⚠️ eval_js is an ESCAPE HATCH for actions not covered by other commands. Use it only when no other action fits. The code runs inside Excel.run with 'context' (Excel.RequestContext) available. Always call 'await context.sync()' before returning a value.
 
+WORKFLOW FOR BUILDING DASHBOARDS ON NEW SHEETS:
+When the user asks to build a dashboard, chart, or report on a new sheet based on data from another sheet:
+1. First emit get_sheet_data to read the source sheet's data: <EXCEL_CMD>{"action":"get_sheet_data","sheet":"Sheet1"}</EXCEL_CMD>
+2. Then add_sheet to create the target: <EXCEL_CMD>{"action":"add_sheet","name":"Dashboard"}</EXCEL_CMD>
+3. Then write headers/KPIs/charts to the new sheet using the "sheet" parameter: <EXCEL_CMD>{"action":"write_range","range":"A1:D1","values":[["Metric","Q1","Q2","Q3"]],"sheet":"Dashboard"}</EXCEL_CMD>
+4. Create charts on the new sheet: <EXCEL_CMD>{"action":"create_chart","chart_type":"column","data_range":"A1:B4","title":"Revenue","sheet":"Dashboard"}</EXCEL_CMD>
+5. Format the dashboard: <EXCEL_CMD>{"action":"format_range","range":"A1:D1","options":{"bold":true,"backgroundColor":"#1A2B4A","fontColor":"#FFFFFF"},"sheet":"Dashboard"}</EXCEL_CMD>
+
 Rules:
 - ALWAYS emit an EXCEL_CMD block when the user asks you to write, modify, format, or analyze data in the spreadsheet.
-- You can emit multiple EXCEL_CMD blocks in one response to chain operations (e.g., write_range → autofit_columns → create_chart).
-- Use valid JSON inside the block. Do NOT use markdown code blocks (\`\`\`) inside the EXCEL_CMD block.
+- You can emit multiple EXCEL_CMD blocks in one response to chain operations (e.g., get_sheet_data → add_sheet → write_range → create_chart → format_range).
+- Use valid JSON inside the block. Do NOT use markdown code blocks (\\\`\\\`\\\`) inside the EXCEL_CMD block.
 - Be precise with cell references and ranges.
-- If you don't know the exact range, assume A1 is the starting point or ask the user.
+- If you don't know the exact range, use get_sheet_data to read the sheet first.
 - After writing large data ranges, emit autofit_columns to make the data readable.
 - After writing data, if the user might want a chart, proactively suggest one.
 
