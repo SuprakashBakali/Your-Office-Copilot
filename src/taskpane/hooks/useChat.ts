@@ -8,11 +8,11 @@ import { ExcelService } from '../services/office/ExcelService';
 
 // ---- Excel Command Execution ----
 
-export interface ExcelCmdResult { executed: number; errors: string[]; }
+export interface ExcelCmdResult { executed: number; errors: string[]; outputs: string[]; }
 
 export async function executeExcelCommands(text: string): Promise<ExcelCmdResult> {
-  const results: ExcelCmdResult = { executed: 0, errors: [] };
-  const cmdRegex = /<EXCEL_CMD>([/\s\S]*?)<\/EXCEL_CMD>/g;
+  const results: ExcelCmdResult = { executed: 0, errors: [], outputs: [] };
+  const cmdRegex = /(?:<EXCEL_CMD>|EXCEL_CMD>|CEL_CMD>)([\s\S]*?)<\/EXCEL_CMD>/gi;
   let match;
   while ((match = cmdRegex.exec(text)) !== null) {
     try {
@@ -175,7 +175,7 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           const jsResult = await ExcelService.evalOfficeJs(cmd.code);
           results.executed++;
           if (jsResult !== null && jsResult !== undefined) {
-            results.errors.push(`[eval_js result]: ${JSON.stringify(jsResult)}`);
+            results.outputs.push(`[eval_js result]: ${JSON.stringify(jsResult)}`);
           }
           break;
         }
@@ -193,25 +193,25 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
             maxResults: cmd.max_results,
           });
           results.executed++;
-          results.errors.push(`[search result]: ${JSON.stringify(searchResults)}`);
+          results.outputs.push(`[search result]: ${JSON.stringify(searchResults)}`);
           break;
         }
         case 'get_all_objects': {
           const objects = await ExcelService.getAllObjects();
           results.executed++;
-          results.errors.push(`[objects]: ${JSON.stringify(objects)}`);
+          results.outputs.push(`[objects]: ${JSON.stringify(objects)}`);
           break;
         }
         case 'get_range_csv': {
           const csv = await ExcelService.getRangeAsCsv(cmd.range, cmd.max_rows, cmd.sheet);
           results.executed++;
-          results.errors.push(`[CSV data]:\n${csv}`);
+          results.outputs.push(`[CSV data]:\n${csv}`);
           break;
         }
         case 'get_sheet_data': {
           const sheetData = await ExcelService.getSheetData(cmd.sheet);
           results.executed++;
-          results.errors.push(`[sheet data]: Sheet "${cmd.sheet}" (${sheetData.rowCount} rows × ${sheetData.columnCount} cols, range: ${sheetData.address}):\n${JSON.stringify(sheetData.values?.slice(0, 100))}`);
+          results.outputs.push(`[sheet data]: Sheet "${cmd.sheet}" (${sheetData.rowCount} rows × ${sheetData.columnCount} cols, range: ${sheetData.address}):\n${JSON.stringify(sheetData.values?.slice(0, 100))}`);
           break;
         }
         case 'freeze_panes':
@@ -253,8 +253,8 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
  *  mid-generation) so the raw <EXCEL_CMD> tag doesn't leak into the UI. */
 export function cleanResponseText(text: string): string {
   return text
-    .replace(/<EXCEL_CMD>([/\s\S]*?)<\/EXCEL_CMD>/g, '')   // closed blocks
-    .replace(/<EXCEL_CMD>[/\s\S]*$/g, '')               // unclosed blocks (to end)
+    .replace(/(?:<EXCEL_CMD>|EXCEL_CMD>|CEL_CMD>)([\s\S]*?)<\/EXCEL_CMD>/gi, '')   // closed blocks
+    .replace(/(?:<EXCEL_CMD>|EXCEL_CMD>|CEL_CMD>)[\s\S]*$/gi, '')               // unclosed blocks (to end)
     .trim();
 }
 
@@ -269,7 +269,7 @@ function cleanThinkingText(thinking: string): string {
 /** Execute any host-specific command blocks found in `text`.
  *  Returns the result { executed, errors } so the caller can surface
  *  per-command failures to the user. */
-async function executeHostCommands(hostApp: OfficeHostType, text: string): Promise<{ executed: number; errors: string[] } | null> {
+async function executeHostCommands(hostApp: OfficeHostType, text: string): Promise<ExcelCmdResult | null> {
   try {
     if (hostApp === 'Excel') return await executeExcelCommands(text);
   } catch (e) {
@@ -532,18 +532,27 @@ export function useChat(hostApp: OfficeHostType) {
         // did something (not just chatted). Show success count AND errors.
         let commandNote = '';
         if (cmdResult && cmdResult.executed > 0) {
+          commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed.`;
+          if (cmdResult.outputs.length > 0) {
+            commandNote += ` 📊 ${cmdResult.outputs.length} data result(s) returned.`;
+          }
           if (cmdResult.errors.length > 0) {
-            commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed. ⚠️ ${cmdResult.errors.length} error(s): ${cmdResult.errors.slice(0, 3).join('; ')}${cmdResult.errors.length > 3 ? '...' : ''}`;
-          } else {
-            commandNote = `\n\n---\n✅ ${cmdResult.executed} command(s) executed successfully.`;
+            commandNote += ` ⚠️ ${cmdResult.errors.length} error(s): ${cmdResult.errors.slice(0, 3).join('; ')}${cmdResult.errors.length > 3 ? '...' : ''}`;
           }
         }
+        
+        // Also attach the raw text to the message so the AI can see the actual JSON outputs
+        let finalContent = displayText + commandNote;
+        if (cmdResult && cmdResult.outputs.length > 0) {
+           finalContent += `\n\n[DATA RETURNED FROM COMMANDS]:\n${cmdResult.outputs.join('\n\n')}`;
+        }
+        
         const cleanThinking = thinking ? cleanThinkingText(thinking) : '';
         patchConversation(convId!, c => ({
           ...c,
           messages: c.messages.map(m =>
             m.id === assistantMsgId
-              ? { ...m, content: displayText + commandNote, thinking: cleanThinking || undefined }
+              ? { ...m, content: finalContent, thinking: cleanThinking || undefined }
               : m,
           ),
         }));

@@ -1,6 +1,4 @@
-fix(ai): support missing sheet parameters and implement activate_sheet command
+fix(ai): correct data outputs treated as errors and relax command tag parsing
 
-- `useChat.ts`: Fixed a major bug where the AI's `sheet` parameter for modifying commands (write_range, write_formula, format_range, create_chart, clear_range) was being completely ignored by the execution engine. This caused dashboards to overwrite the active sheet instead of targeting the intended sheet.
-- `useChat.ts`: Implemented the `activate_sheet` command in the execution switch. The system prompt tells the AI it can use this, but it wasn't implemented, causing "Unknown action" errors.
-- `useChat.ts`: Added regex extraction to pull out only the JSON object from the `<EXCEL_CMD>` block. This prevents "Unexpected non-whitespace character after JSON" errors when the AI accidentally leaves explanatory text inside the tags.
-- `ExcelService.ts`: Updated `formatRange` to support the `sheetName` parameter consistently.
+- `useChat.ts`: Fixed a critical bug where read commands (`get_sheet_data`, `get_range_csv`, etc.) were pushing their data into the `errors` array of the execution result. This caused the UI to incorrectly display a warning, and worse, caused the AI to think its read operations were failing, leading to confused, looping behavior. Extracted read results into a dedicated `outputs` array.
+- `useChat.ts`: Relaxed the regex that parses `<EXCEL_CMD>` tags to also match `EXCEL_CMD>` and `CEL_CMD>`. Certain models (like Nemotron) would occasionally drop the leading `<` when formatting their output, causing the entire command execution engine to blindly ignore their commands. This ensures commands execute even with minor formatting hallucinations.
