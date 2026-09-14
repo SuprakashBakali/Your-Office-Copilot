@@ -142,7 +142,26 @@ const ModelCard: React.FC<ModelCardProps> = ({ model, isActive, onSetActive, onU
         maxTokens: 5,
         stream: false,
       });
-      setTestStatus(response.content ? 'ok' : 'error');
+      // Detect safety/guard model responses (e.g. Llama Guard)
+      // which only output classification labels, not real chat content.
+      const safetyPattern = /^\s*(User Safety|Response Safety|safe|unsafe)\b/i;
+      if (response.content && safetyPattern.test(response.content)) {
+        setTestStatus('error');
+        setTestError(
+          `Model returned a safety classification instead of a chat response — ` +
+          `"${response.content.substring(0, 60)}". The model ID "${modelId}" ` +
+          `may point to a guard/moderation model, not a chat model. ` +
+          `Check the model ID (OpenRouter free models need the :free suffix, ` +
+          `e.g. "meta-llama/llama-3.3-70b-instruct:free").`
+        );
+        return;
+      }
+      if (response.content) {
+        setTestStatus('ok');
+      } else {
+        setTestStatus('error');
+        setTestError(`Model returned an empty response. Check that "${modelId}" is a valid model ID for this provider.`);
+      }
     } catch (e) {
       setTestStatus('error');
       setTestError((e as Error).message);

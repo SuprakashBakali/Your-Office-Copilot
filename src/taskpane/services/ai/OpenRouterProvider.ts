@@ -10,7 +10,15 @@ export class OpenRouterProvider extends OpenAICompatibleProvider {
 
   getModels() {
     return [
-      // Meta Llama
+      // ── Free-tier models (no credits needed) ──────────────────────────
+      { id: 'meta-llama/llama-3.3-70b-instruct:free', name: '🆓 Llama 3.3 70B (Free)' },
+      { id: 'meta-llama/llama-4-maverick:free',       name: '🆓 Llama 4 Maverick (Free)' },
+      { id: 'google/gemma-3-27b-it:free',             name: '🆓 Gemma 3 27B (Free)' },
+      { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: '🆓 Mistral Small 3.1 (Free)' },
+      { id: 'qwen/qwen3-14b:free',                    name: '🆓 Qwen3 14B (Free)' },
+      { id: 'deepseek/deepseek-r1:free',              name: '🆓 DeepSeek R1 (Free)' },
+      { id: 'microsoft/phi-4:free',                   name: '🆓 Phi-4 (Free)' },
+      // ── Meta Llama ────────────────────────────────────────────────────
       { id: 'meta-llama/llama-3.3-70b-instruct',     name: 'Llama 3.3 70B' },
       { id: 'meta-llama/llama-4-scout',               name: 'Llama 4 Scout' },
       { id: 'meta-llama/llama-4-maverick',            name: 'Llama 4 Maverick' },

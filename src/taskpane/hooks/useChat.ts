@@ -537,7 +537,16 @@ export function useChat(hostApp: OfficeHostType) {
       const finishAssistant = async (raw: string, thinking: string = '') => {
         const cmdResult = await executeHostCommands(hostApp, raw);
         const stripped = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-        const displayText = cleanResponseText(stripped);
+        let displayText = cleanResponseText(stripped);
+
+        // Detect safety/guard model responses (e.g. Llama Guard returning
+        // "User Safety: safe\nResponse Safety: safe" instead of a real answer).
+        // This happens when an invalid model ID routes to a moderation model.
+        const safetyPattern = /^\s*(User Safety|Response Safety|safe|unsafe)\b/i;
+        if (safetyPattern.test(displayText)) {
+          displayText = `⚠️ **Wrong model detected** — the AI returned a safety classification instead of a response:\n> ${displayText.substring(0, 100)}\n\nYour model ID likely points to a guard/moderation model, not a chat model. Go to **Settings → My Models** and fix the Model ID. OpenRouter free models need the \`:free\` suffix (e.g. \`meta-llama/llama-3.3-70b-instruct:free\`).`;
+        }
+
         // Surface command execution results so the user knows the AI actually
         // did something (not just chatted). Show success count AND errors.
         let commandNote = '';
