@@ -29,6 +29,9 @@ Available actions:
     - Supported chart types: "column", "pie", "line", "bar", "area", "scatter"
 - Delete Chart:    <EXCEL_CMD>{"action":"delete_chart","chart_name":"Chart1"}</EXCEL_CMD> (use "all" for chart_name to delete all charts on sheet)
 - Create a PivotTable: <EXCEL_CMD>{"action":"create_pivot_table","source_range":"A1:D100","target_cell":"F1","row_field":"Category","value_field":"Sales","pivot_name":"SalesSummary"}</EXCEL_CMD>
+- Add Slicer:      <EXCEL_CMD>{"action":"add_slicer","source":"SalesTable","source_field":"Region","target_cell":"H1","sheet":"Dashboard"}</EXCEL_CMD> (source can be a Table or PivotTable name)
+- Clear Slicer:    <EXCEL_CMD>{"action":"clear_slicer","name":"Slicer_Region"}</EXCEL_CMD>
+- Delete Slicer:   <EXCEL_CMD>{"action":"delete_slicer","name":"Slicer_Region"}</EXCEL_CMD>
 - Clear a range:   <EXCEL_CMD>{"action":"clear_range","range":"A1:Z100","sheet":"Dashboard"}</EXCEL_CMD>
 - Format a range:  <EXCEL_CMD>{"action":"format_range","range":"A1:A10","options":{"bold":true,"backgroundColor":"#FFFF00","fontColor":"#FF0000","fontSize":14,"wrapText":true,"horizontalAlignment":"Center","numberFormat":"$#,##0.00"},"sheet":"Dashboard"}</EXCEL_CMD>
 - Add Sheet:       <EXCEL_CMD>{"action":"add_sheet","name":"NewData"}</EXCEL_CMD>

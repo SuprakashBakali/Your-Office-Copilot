@@ -344,6 +344,57 @@ export class ExcelService {
     });
   }
 
+  /**
+   * Add a slicer to a PivotTable or Table.
+   */
+  static async addSlicer(source: string, sourceField: string, targetCell: string, sheetName?: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const targetSheet = sheetName
+        ? context.workbook.worksheets.getItem(sheetName)
+        : context.workbook.worksheets.getActiveWorksheet();
+      
+      const slicer = context.workbook.slicers.add(source, sourceField, targetSheet);
+      
+      // Position it at the target cell
+      const cell = targetSheet.getRange(targetCell);
+      cell.load(["top", "left"]);
+      await context.sync();
+      
+      slicer.top = cell.top;
+      slicer.left = cell.left;
+      slicer.name = `Slicer_${sourceField}`;
+      await context.sync();
+    });
+  }
+
+  /**
+   * Clear filters on a specific slicer.
+   */
+  static async clearSlicer(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const slicer = context.workbook.slicers.getItem(name);
+      slicer.slicerItems.load("items");
+      await context.sync();
+      
+      // Clearing the slicer filter is done by setting all items to selected
+      // But Office JS has clearFilters() method in some API sets? 
+      // slicer.clearFilters() requires ExcelApi 1.10.
+      slicer.clearFilters();
+      await context.sync();
+    });
+  }
+
+  /**
+   * Delete a specific slicer.
+   */
+  static async deleteSlicer(name: string): Promise<void> {
+    return Excel.run(async (context) => {
+      const slicer = context.workbook.slicers.getItem(name);
+      slicer.delete();
+      await context.sync();
+    });
+  }
+
   static async addSheet(name: string): Promise<void> {
     return Excel.run(async (context) => {
       const sheets = context.workbook.worksheets;

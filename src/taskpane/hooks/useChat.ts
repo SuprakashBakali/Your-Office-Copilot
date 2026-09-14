@@ -74,6 +74,18 @@ export async function executeExcelCommands(text: string): Promise<ExcelCmdResult
           await ExcelService.createPivotTable(cmd.source_range, cmd.target_cell, cmd.row_field, cmd.value_field, cmd.pivot_name);
           results.executed++;
           break;
+        case 'add_slicer':
+          await ExcelService.addSlicer(cmd.source, cmd.source_field, cmd.target_cell, cmd.sheet);
+          results.executed++;
+          break;
+        case 'clear_slicer':
+          await ExcelService.clearSlicer(cmd.name);
+          results.executed++;
+          break;
+        case 'delete_slicer':
+          await ExcelService.deleteSlicer(cmd.name);
+          results.executed++;
+          break;
         case 'clear_range':
           await ExcelService.clearRange(cmd.range, cmd.sheet);
           results.executed++;
